@@ -27,8 +27,12 @@ MSQTA._Schema.IndexedDB = {
 			schemaFields = this._schemaFields,
 			fieldName, fieldMapping = {},
 			schemaName = this._name;
+	
+		if( !searchValue ) {
+			MSQTA._Errors.get( databaseName, schemaName );
+		}
 		
-		for( fieldName in schema ) {
+		for( fieldName in schemaFields ) {
 			fieldMapping[fieldName] = this._getValueBySchema( fieldName, searchValue );
 		}
 		

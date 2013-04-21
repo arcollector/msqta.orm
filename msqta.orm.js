@@ -7,6 +7,9 @@ MSQTA._IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.ms
 /***************************************/
 /***************************************/
 MSQTA._Errors = {
+	get: function( databaseName, schemaName ) {
+		throw Error( 'MSQTA-ORM: get: missing search value on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+	},
 	getByIndexWithRange1: function( databaseName, schemaName, fieldName ) {
 		throw Error( 'MSQTA-ORM: getByIndexWithRange: "' + fieldName + '" is not an index in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},

@@ -429,11 +429,16 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			schemaFields = this._schemaFields,
 			fieldName,
+			databaseName = ORM._name,
 			schemaName = this._name,
 			selectQuery,
 			whereClause = [];
 		
-		for( fieldName in schema ) {
+		if( !searchValue ) {
+			MSQTA._Errors.get( databaseName, schemaName );
+		}
+		
+		for( fieldName in schemaFields ) {
 			whereClause.push( fieldName + ' = ' + this._getValueBySchema( fieldName, searchValue ) );
 		}
 		

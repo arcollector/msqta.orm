@@ -93,6 +93,7 @@ A schema is just like a table, to set a schema do this:
 
 **THIS IS VERY IMPORTANT**: When you change a schema field type, MSQTA.ORM will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
 
+## CRUDing
 ## Putting values on a schema (put)
 This is like doing an `INSERT INTO...` on a speficied schema *(a table)*. To do so, do this:
 ```javascript	
@@ -163,11 +164,24 @@ To do so, do this:
 
 ## Deleting a schema (destroy)
 This is like a `DROP TABLE table`.
+
 To do so, do this:
 ```javascript	
 	schema.destroy( [callback], [context] );
 ```
-**Just know that also the schema instance will be dimmed**
+**Just know that also the schema instance will be dimmed!**
 
 ## Quering
-## getAll()
+## getAll
+Retrieves all records.
+```javascript	
+	schema.getAll( [callback], [context] );
+```
+
+## get 
+Retrieves all records that have any of its field equals to `searchValue`.
+```javascript	
+	schema.get( searchValue, [callback], [context] );
+```
+
+
