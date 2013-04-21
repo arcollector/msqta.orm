@@ -202,7 +202,7 @@ Retrieves all records where the specified `indexName` that must to refers to a f
 ```
 
 * `indexName`: a string that referes to field that must be also an index or the primary key.
-* `rangeData`: an object that its properties name are operators of the types: `>|<|>=|<=|=`, for example, something like this
+* `rangeData`: an object that its properties name are operators of the types: `>|<|>=|<=|=`, for example, something like this:
 ```javascript
 	{ '>': 2010-10-10', '<': 2010-10-31' }
 ```
@@ -220,17 +220,18 @@ Retrieves all the records where any of its fields are like the specified one, th
 ```
 
 * `fieldsName`: a string OR an array with fields name used to do the comparision.
-* `searchValue`: an object with the following information:
+* `likeData`: an object with the following information:
+
 ```javascript
 	{
-		type: 'start|end|both', // where to put the % operator
-		value: 'a string value'
+		// where to put the % operator
+		'start|end|both': 'a string value'
 	}
 ```
 
 Check this example
 ```javascript
-	schema.getAllWithLike( 'name', { 'end': 'doe' }, [ callback ], [ context ] );
+	schema.getAllWithLike( 'name', { end: 'doe' }, [ callback ], [ context ] );
 ```
 Thinking in sql, this will translate to:
 ```sql
