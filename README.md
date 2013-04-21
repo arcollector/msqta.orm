@@ -112,7 +112,9 @@ You can also put multilpes objects *(rows)*, by passing array that contains seve
 The `callback` will be receibe a param that is the ID of the newly inserted row.
 
 ## Setting values on a schema (set)
-This is like a `UPDATE table SET col = value WHERE id = 1`. To do so, do this:
+This is like a `UPDATE table SET col = value WHERE id = 1`.
+
+To do so, do this:
 ```javascript	
 	schema.set( {
 		data: {
@@ -126,6 +128,7 @@ This is like a `UPDATE table SET col = value WHERE id = 1`. To do so, do this:
 To set *(update)* an exisiting object *(row)*, the update object must be contains two propeties:
 * `data`: an object that contains the fields *(columns)* to be updated
 * `target`: an oject that contains the fields with an specified value, that is used to detect what objects needs to be updated.
+
 So in this example, it says, find the object(s) *(rows)* will the field *(column)* `id` that is equal to `1`, and then update its field *(column)* `tel` to the value `'111945045406'`
 
 You can also set *(update)* multiple objects *(rows)* at a single call, by passing an array that contains multiple update objects.
@@ -135,8 +138,9 @@ You can also set *(update)* multiple objects *(rows)* at a single call, by passi
 
 The `callback` will be receibe a param that is the count of affected rows.
 
-## Setting values on a schema (del)
-This is like a `DELETE FROM table WHERE id = 1`, **just know that you can only delete by primary key!**
+## Deleting on a schema (del)
+This is like a `DELETE FROM table WHERE id = 1`, **just know that you can only delete by a primary key value!**
+
 To delete an object *(row)* do this:
 ```javascript	
 	schema.del( 1, [callback], [context] );
@@ -149,3 +153,21 @@ You can also delete various objects *(rows)* at a single call by passing an arra
 
 The `callback` will be receibe a param that is the count of affected rows.
 
+## Truncating on a schema (empty)
+This is like a `TRUNCATE TABLE table`.
+
+To do so, do this:
+```javascript	
+	schema.empty( [callback], [context] );
+```
+
+## Deleting a schema (destroy)
+This is like a `DROP TABLE table`.
+To do so, do this:
+```javascript	
+	schema.destroy( [callback], [context] );
+```
+**Just know that also the schema instance will be dimmed**
+
+## Quering
+## getAll()
