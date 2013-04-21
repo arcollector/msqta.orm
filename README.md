@@ -214,7 +214,7 @@ Check this example:
 This says, get all the records where its field/index `date` where its value falls into the range `date > '2010-10-10' **AND** date < '2010-10-31'`
 
 ## getAllWithLike
-Retrieves all the records where any of its fields are like the specified one, this like using the `LIKE %string%` operator from the sql standard.
+Retrieves all records where any of its fields are like the specified one, this like using the `LIKE %string%` operator from the sql standard.
 ```javascript
 	schema.getAllWithLike( fieldsName, likeData, [ callback ], [ context ] );
 ```
@@ -238,5 +238,11 @@ Thinking in sql, this will translate to:
 	SELECT * FROM table_name WHERE name LIKE "doe%"
 ```
 	
+## getByCallback
+Retrieves all records that sastifies wherever you do in `filterCallback`
 
+```javascript
+	schema.getByCallback( filterCallback, [ callback ], [ context ] );
+```
 
+* `filterCallback`: will receibe at every iteration of the results set that MSQTA.ORM is doing, the current record, you only has to return true or false, to tells to MSQTA.ORM that this record must be part of the final results set or not.
