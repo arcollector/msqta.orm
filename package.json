@@ -1,0 +1,21 @@
+{
+  "name": "MSQTA.ORM",
+  "description": "IndexedDB-WebSQL abstract layer ORM",
+  "version": "1.0.0",
+  "homepage" : "http://orm.msqta.com/",
+  "engines": {
+    "node": ">= 0.8.15"
+  },
+  "dependencies": {
+    "dryice": ">= 0.4.10",
+    "shelljs": ">= 0.1.2"
+  },
+  "author": "Ruiz Martin",
+  "repository" : {
+    "type" : "git",
+     "url" : "git://github.com/arcollector/msqta.orm.git"
+  },
+  "licenses": [
+    { "type": "BSD", "url": "http://opensource.org/licenses/BSD-3-Clause" }
+  ]
+}
