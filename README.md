@@ -23,13 +23,13 @@ Just place the following script tag pointing to wherever you have `msqta.orm.js`
 	
 Getting started
 --------------------
-Remember this: **msqta.orm stores js objects on schemas**, and you do need to care about **what is the current version number of my database?**, MSQTA.ORM it will take care of this.
+Remember this: **MSQTA.ORM stores js objects into schemas**, and you do NOT need to care about **what is the current version number of my database?**, MSQTA.ORM it will take care of this.
 
 A js object, is just a that, for example:
 ```javascript
 	{ name: 'John Doe', age: 12, food: [ 'pizza', 'hamburger' ] }
 ```	
-A schema is like a table that stores these objects, and every property name that composes the object refers to a column name of that schema, each column support a particular variable type, these are:
+A schema is like a *table* that holds these objects, and every property name that composes the object refers to a field *(column)* name of that schema, each field support a particular variable type, these are:
 * string
 * integer
 * float
@@ -37,7 +37,7 @@ A schema is like a table that stores these objects, and every property name that
 * object
 * boolean
 
-Every schema (the tables) are placed into a database, creating the database is the first step that you need to do.
+Every schema *(a table)* are placed into a database, creating the database is the first step that you need to do.
 
 Creating a database
 --------------------------
