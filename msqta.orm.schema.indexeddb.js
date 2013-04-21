@@ -82,18 +82,18 @@ MSQTA._Schema.IndexedDB = {
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
 			i, l, fieldName,
-			searchValue, likeType;
-		
-		if( typeof likeData !== 'object' || !likeData.value || !likeData.type ) {
+			likeType, searchValue;
+			
+		if( typeof likeData !== 'object' ) {
 			MSQTA._Errors.getAllWithLike1();
 		}
 		
-		if( !( fields instanceof Array ) ) {
-			fields = [ fields ];
+		likeType = Object.keys( likeData )[0];
+		searchValue = likeData[likeType];
+		if( !likeType || !searchValue ) {
+			MSQTA._Errors.getAllWithLike1();
 		}
 
-		searchValue = likeData.value;
-		likeType = likeData.type;
 		if( likeType === 'both' ) {
 			searchValue = new RegExp( searchValue, 'i' );
 		} else if( likeType === 'start' ) {
@@ -102,6 +102,9 @@ MSQTA._Schema.IndexedDB = {
 			searchValue = new RegExp( searchValue + '$', 'i' );
 		}
 		
+		if( !( fields instanceof Array ) ) {
+			fields = [ fields ];
+		}
 		for( i = 0, l = fields.length; i < l; i++ ) {
 			fieldName = fields[i];
 			if( !schemaFields[fieldName] ) {
