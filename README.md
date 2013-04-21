@@ -179,9 +179,38 @@ Retrieves all records.
 ```
 
 ## get 
-Retrieves all records that have any of its field equals to `searchValue`.
+Retrieves all records that have any of its fields values equals to `searchValue`.
 ```javascript	
 	schema.get( searchValue, [callback], [context] );
 ```
+
+* `searchValue`: a string used to do the comparsion.
+
+## getByIndex
+Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value is equals to `searchValue`.
+```javascript	
+	schema.getByIndex( indexName, searchValue, [ callback ], [ context ] );
+```
+
+* `indexName`: a string that referes to field that must be also an index or the primary key.
+* `searchValue`: can be a string OR an array with multiple strings used to do the comparsion.
+
+## getByIndexWithRange
+Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value falls in the specified range
+```javascript	
+	schema.getByIndex( indexName, rangeData, [ callback ], [ context ] );
+```
+
+* `indexName`: a string that referes to field that must be also an index or the primary key.
+* `rangeData`: an object that its properties name are operators of the types: `>|<|>=|<=|=', for example, something like this
+```javascript
+	{ '>': 2010-10-10', '<': 2010-10-31' }
+```
+
+Check this example:
+```javascript
+	schema.getByIndex( 'date', { '>': '2010-10-10', '<': 2010-10-31' }, [ callback ], [ context ] );
+```
+This says, get all the records where its field/index `date` where its value falls into the range `date > '2010-10-10' && date < '2010-10-31'`
 
 
