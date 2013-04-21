@@ -1,7 +1,6 @@
 MSQTA.ORM
 =========
-
-IndexedDB-WebSQL abstract layer ORM
+IndexedDB-WebSQL abstract layer ORM.
 
 License
 ----------
@@ -24,8 +23,9 @@ Just place the following script tag pointing to wherever you have `msqta.orm.js`
 	
 Getting started
 --------------------
-Remember this: **msqta.orm stores js objects on schemas**.
-A js object is just a that, for example:
+Remember this: **msqta.orm stores js objects on schemas**, and you do need to care about **what is the current version number of my database?**, MSQTA.ORM it will take care of this.
+
+A js object, is just a that, for example:
 ```javascript
 	{ name: 'John Doe', age: 12, food: [ 'pizza', 'hamburger' ] }
 ```	
