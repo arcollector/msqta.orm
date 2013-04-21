@@ -196,13 +196,14 @@ Retrieves all records where the specified `indexName` that must to refers to a f
 * `searchValue`: can be a string OR an array with multiple strings used to do the comparsion.
 
 ## getByIndexWithRange
-Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value falls in the specified range
+Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value falls in the specified range.
 ```javascript	
 	schema.getByIndex( indexName, rangeData, [ callback ], [ context ] );
 ```
 
 * `indexName`: a string that referes to field that must be also an index or the primary key.
 * `rangeData`: an object that its properties name are operators of the types: `>|<|>=|<=|=`, for example, something like this:
+
 ```javascript
 	{ '>': 2010-10-10', '<': 2010-10-31' }
 ```
