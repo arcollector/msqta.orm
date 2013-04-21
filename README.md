@@ -73,23 +73,25 @@ A schema is just like a table, to set a schema do this:
 ```	
 * `name`: name of the schema
 * `fields`: the columns definition of the schema according to this:
+
 ```javascript
-	{ name_of_the_field(column): { 
+	name_of_the_field(column): { 
 		type: 'string|integer|float|object|array|boolean', // the field type
 		index: true|false, // use this field as an index? (optional)
 		unique: true|false, // only unique values are permitted? (optional)
 		allowNull: true|false // can i store the null value? (optional)
 	}
-```	
+```
+
 * `primaryKey`: the name of the field *(column)* that is the primary key. **You always has to specified a primary key and it must be of the type integer!**
 
 `options` *(optional)*: an object that with the following information:
-	`forceDestroy`: destroy the current schema to be recreated again, its useful is you want always an empty table.
-	`forceEmpty`: this is a like forceDestroy, but will the difference that this one will not drop the schema, instead it will just empty that schema
-	`callback`: a function to be called after the schema is setted with...
-	`context`: ...a specified context
+* `forceDestroy`: destroy the current schema to be recreated again, its useful is you want always an empty table.
+* `forceEmpty`: this is a like forceDestroy, but will the difference that this one will not drop the schema, instead it will just empty that schema
+* `callback`: a function to be called after the schema is setted with...
+* `context`: ...a specified context
 
-**THIS IS VERY IMPORTANT**: When you change a schema field type, **msqta.orm** will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
+**THIS IS VERY IMPORTANT**: When you change a schema field type, MSQTA.ORM will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
 
 
 	
