@@ -245,4 +245,11 @@ Retrieves all records that sastifies wherever you do in `filterCallback`
 	schema.getByCallback( filterCallback, [ callback ], [ context ] );
 ```
 
-* `filterCallback`: will receibe at every iteration of the results set that MSQTA.ORM is doing, the current record, you only has to return true or false, to tells to MSQTA.ORM that this record must be part of the final results set or not.
+* `filterCallback`: will receibe at every iteration of the results set that MSQTA.ORM is currently processing, the current record, you only has to return `true` or `false`, to tells to MSQTA.ORM that this record must be part of the final results set or not.
+
+Limitations
+--------------
+* MSQTA.ORM don't offers the posibility to do joins, to simulate this situation you have to filter by the field that acts as a foreign key, by using any of the quering methods.
+* Primary keys must be of the type integer and you can ommited. Composite primary keys are not supported.
+* Indexes must be of the type string or numeric, object and array types for indexes are not supported.
+* Only a single active connection to a database is supported.
