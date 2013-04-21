@@ -93,5 +93,59 @@ A schema is just like a table, to set a schema do this:
 
 **THIS IS VERY IMPORTANT**: When you change a schema field type, MSQTA.ORM will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
 
+## Putting values on a schema (put)
+This is like doing an `INSERT INTO...` on a speficied schema *(a table)*. To do so, do this:
+```javascript	
+	schema.put( {
+		name: 'Juan Perez',
+		email: 'bg@gmial.com',
+		tel: '111945045406'
+	}, [callback], [context] );
+```
+`schema` is the variable that MSQTA.ORM returns to you, when you instanciate an schema.
+Remember that all values need to be casted to the specified column type, so for example is the column type is `string` and you pass to it the integer `1343` it will casted to `"1343"`, if the value is casted to a non-value, the zero value of that column is will used, for example in the case of string, an empty string will be used it.
 
-	
+You can also put multilpes objects *(rows)*, by passing array that contains severals object to be stored.
+```javascript
+	schema.put( [ { name: 'Elvis' }, { name: 'John' }, { name: 'Laura' } ], [callback], [context] );
+```
+The `callback` will be receibe a param that is the ID of the newly inserted row.
+
+## Setting values on a schema (set)
+This is like a `UPDATE table SET col = value WHERE id = 1`. To do so, do this:
+```javascript	
+	schema.set( {
+		data: {
+			tel: '111945045406'
+		},
+		target: {
+			id: 1
+		}
+	}, [callback], [context] );
+```
+To set *(update)* an exisiting object *(row)*, the update object must be contains two propeties:
+* `data`: an object that contains the fields *(columns)* to be updated
+* `target`: an oject that contains the fields with an specified value, that is used to detect what objects needs to be updated.
+So in this example, it says, find the object(s) *(rows)* will the field *(column)* `id` that is equal to `1`, and then update its field *(column)* `tel` to the value `'111945045406'`
+
+You can also set *(update)* multiple objects *(rows)* at a single call, by passing an array that contains multiple update objects.
+```javascript
+	schema.set( [ { data: { name: 'Elvis' }, target: { id: 1 } }, { { data: name: 'John' }, target: { id: 2 } } ], [callback], [context] );
+```
+
+The `callback` will be receibe a param that is the count of affected rows.
+
+## Setting values on a schema (del)
+This is like a `DELETE FROM table WHERE id = 1`, **just know that you can only delete by primary key!**
+To delete an object *(row)* do this:
+```javascript	
+	schema.del( 1, [callback], [context] );
+```
+
+You can also delete various objects *(rows)* at a single call by passing an array, like this:
+```javascript	
+	schema.del( [ 1, 2, 3 ], [callback], [context] );
+```
+
+The `callback` will be receibe a param that is the count of affected rows.
+
