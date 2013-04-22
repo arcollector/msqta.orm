@@ -694,7 +694,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	this.forceEmpty = this.forceDestroy ? false : options.forceEmpty;
 	this._initCallback = typeof options.callback === 'function' ? options.callback : MSQTA._Helpers.defaultCallback;
 	this._initContext = options.context || window;
-};MSQTA._ORM.IndexedDB = {
+};
+MSQTA._ORM.IndexedDB = {
 	
 	Schema: function( schemaDefinition ) {
 		return MSQTA._Helpers.instantiateSchema( { 
@@ -1806,7 +1807,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		
 		this._deleteUserDatabase( callback, context );
 	},
-};MSQTA._Schema.IndexedDB = {
+};
+MSQTA._Schema.IndexedDB = {
 	
 	_init: function() {
 		var ORM = this._ORM,
@@ -2420,7 +2422,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			context: userContext
 		} );
 	}
-};MSQTA._ORM.WebSQL = {
+};
+MSQTA._ORM.WebSQL = {
 	
 	Schema: function( schemaDefinition ) {
 		return MSQTA._Helpers.instantiateSchema( { 
@@ -2723,7 +2726,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	_removeQueryError: function( id ) {
 		this._errorQueries.splice( id, 1 );
 	}
-};MSQTA._Schema.WebSQL = {
+};
+MSQTA._Schema.WebSQL = {
 
 	_init: function() {
 		var schemaFields = this._schemaFields,
