@@ -34,17 +34,11 @@ MSQTA._Errors = {
 	getByIndex2: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: getByIndex: missing search value in "getByIndex" method from "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
-	getAllWithLike1: function() {
-		throw Error( 'MSQTA-ORM: getAllWithLike: like data is not valid, it must be something like this: "{type: "both", value: "john"}" !' );
+	getWithLike1: function() {
+		throw Error( 'MSQTA-ORM: getWithLike: like data is not valid, it must be something like this: "{type: "both", value: "john"}" !' );
 	},
-	getAllWithLike2: function( databaseName, schemaName, fieldName ) {
-		throw Error( 'MSQTA-ORM: getAllWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
-	},
-	put1: function( databaseName, schemaName, fieldName ) {
-		throw Error( 'MSQTA-ORM: put: column ' + fieldName + ' is not present in the "' + schemaName + '" schema from the "' + databaseName + '" database!' ); 
-	},
-	put2: function( databaseName, schemaName ) {
-		throw Error( 'MSQTA-ORM: put: values are missing in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+	getWithLike2: function( databaseName, schemaName, fieldName ) {
+		throw Error( 'MSQTA-ORM: getWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
 	set1: function( databaseName, schemaName, setDatas ) {
 		throw Error( 'MSQTA-ORM: set: data param is invalid for the "' + schemaName + '" schema from the "' + databaseName + '" database!', setDatas );
@@ -148,7 +142,7 @@ MSQTA._Helpers = {
 	},
 /***************************************/	
 	ormMethods: [ 'batch', 'destroy' ],
-	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getAllWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
+	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
 	
 	dimSchemaInstance: function( Schema ) {
 		var schemaMethods = this.schemaMethods,
@@ -316,6 +310,7 @@ MSQTA._Helpers = {
 			schemaFieldData.abstract = type;
 			schemaFieldData.real = realDataType + ( allowNull ? ' NULL' : '' );
 			schemaFieldData.isJSON = type === 'object' || type === 'array';
+		
 		}
 	}
 };
@@ -589,7 +584,7 @@ MSQTA.ORM = function( settings, callback, context ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}
 	
-	settings.callback = typeof callback !== 'function' ? MSQTA._Helpers.noop : callback;
+	settings.callback = typeof callback === 'function' ? callback : MSQTA._Helpers.defaultCallback;
 	settings.context = context || window;
 	
 	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
@@ -656,6 +651,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	if( schemaFields[pk].type !== 'integer' ) {
 		throw Error( 'MSQTA-Schema: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
+	// force null values on the primary key, to get working the auto_increment
+	schemaFields[pk].allowNull = true;
 	
 	var fieldName, fieldData,
 		schemaIndexes = [],
@@ -1560,7 +1557,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 				targetPk = target[pk], fieldName,
 				colsCount = Object.keys( target ).length;
 			
-			if( pk && targetPk ) {
+			if( targetPk ) {
 				objectStore.get( targetPk ).onsuccess = function( e ) {
 					var record = e.target.result,
 						req;
@@ -1571,7 +1568,9 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 					
 					req = objectStore.put( record );
 					req.onsuccess = function( e ) {
-						affectedRows++;
+						if( e.target.result ) {
+							affectedRows++;
+						}
 						next();
 					};
 					req.onerror = function( e ) {
@@ -1603,7 +1602,9 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 							
 							req = cursor.update( record );
 							req.onsuccess = function( e ) {
-								affectedRows++;
+								if( e.target.result ) {
+									affectedRows++;
+								}
 								cursor.continue();
 							};
 							req.onerror = function( e ) {
@@ -1696,8 +1697,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	_destroy2: function( queryData ) {
 		var self = this,
 			databaseName = this._name,
-			Schema = self._Schemas[schemaName],
 			schemaName = queryData.schema,
+			Schema = this._Schemas[schemaName],
 			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
 		
 		req.onsuccess = function( e ) {
@@ -1720,7 +1721,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 						delete self._Schemas[schemaName];
 						MSQTA._Helpers.dimSchemaInstance( Schema );
 						
-						this._done( queryData );
+						this._done( queryData, true );
 					}, self );
 				};
 			};
@@ -1883,7 +1884,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		}, userCallback, userContext );
 	},
 
-	getAllWithLike: function( fields, likeData, userCallback, userContext ) {
+	getWithLike: function( fields, likeData, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaFields = this._schemaFields,
@@ -1892,13 +1893,13 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			likeType, searchValue;
 			
 		if( typeof likeData !== 'object' ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 		
 		likeType = Object.keys( likeData )[0];
 		searchValue = likeData[likeType];
 		if( !likeType || !searchValue ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 
 		if( likeType === 'both' ) {
@@ -1915,7 +1916,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		for( i = 0, l = fields.length; i < l; i++ ) {
 			fieldName = fields[i];
 			if( !schemaFields[fieldName] ) {
-				MSQTA._Errors.getAllWithLike2( databaseName, schemaName, fieldName );
+				MSQTA._Errors.getWithLike2( databaseName, schemaName, fieldName );
 			}
 		}
 		
@@ -2228,8 +2229,9 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			fields = this._fieldsName, fieldName,
+			pk = this._primaryKey,
 			schemaName = this._name,
-			data, i, l;
+			data, i, l, k, m = fields.length;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -2237,14 +2239,10 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
-			for( fieldName in data ) {
-				if( fields.indexOf( fieldName ) === -1 ) {
-					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
-				}
+			for( k = 0; k < m; k++ ) {
+				fieldName = fields[k];
 				data[fieldName] = this._getValueBySchema( fieldName, data[fieldName] );
-			}
-			if( !Object.keys( data ).length ) {
-				MSQTA._Errors.put2( databaseName, schemaName );
+				delete data[pk];
 			}
 		}
 
@@ -2302,7 +2300,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			for( fieldName in cmpFields ) {
 				fieldValue = cmpFields[fieldName];
 				parsedValue = this._getValueBySchema( fieldName, fieldValue );
-				if( !parsedValue ) {
+				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
 				}
 				whereClause[fieldName] = parsedValue;
@@ -2334,7 +2332,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			type: 'set',
 			schema: schemaName,
 			indexes: this._indexes,
-			
+			primaryKey: this._primaryKey,
 			data: queries,
 			callback: userCallback,
 			context: userContext
@@ -3323,7 +3321,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		} );
 	},
 	
-	getAllWithLike: function( fields, likeData, userCallback, userContext ) {
+	getWithLike: function( fields, likeData, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaFields = this._schemaFields,
@@ -3333,13 +3331,13 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			selectAllQueryWithLike, whereClause = [];
 		
 		if( typeof likeData !== 'object' ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 		
 		likeType = Object.keys( likeData )[0];
 		searchValue = likeData[likeType];
 		if( !likeType || !searchValue ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 		
 		if( likeType === 'both' ) {
@@ -3356,7 +3354,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		for( i = 0, l = fields.length; i < l; i++ ) {
 			fieldName = fields[i];
 			if( !schemaFields[fieldName] ) {
-				MSQTA._Errors.getAllWithLike2( databaseName, schemaName, fieldName );
+				MSQTA._Errors.getWithLike2( databaseName, schemaName, fieldName );
 			}
 			whereClause.push( fieldName + ' LIKE ' + searchValue );
 		}

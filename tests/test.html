@@ -243,7 +243,7 @@
 		} );
 		
 		tests.push( function() {
-			asyncTest( 'Quering all with like (schema#getWithLike)', function() {
+			asyncTest( 'Quering with like (schema#getWithLike)', function() {
 				schema.getWithLike( 'name', { both: 'a' }, function( results ) {
 					equal( results.length, 2 );
 				} );
@@ -277,20 +277,80 @@
 		} );
 		
 		tests.push( function() {
-			asyncTest( 'Quering all with like (schema#getByIndex)', function() {
-				schema.getByIndex( 'name', 'El tragasable', function( results ) {
+			asyncTest( 'Quering by callback (schema#getByCallback)', function() {
+				schema.getByCallback( function( record ) {
+					return true;
+				}, function( results ) {
+					equal( results.length, 4 );
+				} );
+				schema.getByCallback( function( record ) {
+					return record.age > 21;
+				}, function( results ) {
 					equal( results.length, 1 );
-				} );
-				schema.getByIndex( 'name', [ 'El tragasable', 'EL virgo' ], function( results ) {
-					equal( results.length, 2 );
-				} );
-				schema.getByIndex( 'name', [ 'me gusta el pedazo' ], function( results ) {
-					equal( results.length, 0 );
 					start();
 					
 					next();
 				} );
 			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating records (schema#set)', function() {
+				schema.set( { data: { name: 'el trolazo' }, target: { id: 1 } }, function( affectedRows ) {
+					equal( affectedRows, 1 );
+				} );
+				schema.set( [ { data: { name: 'el tocabulto' }, target: { id: 1 } }, { data: { age: '32' }, target: { id: 2 } } ], function( affectedRows ) {
+					equal( affectedRows, 2 );
+				} );
+				schema.set( { data: { comments: 'soy un trolazo, me gusta el pedazo' }, target: { comments: '' } }, function( affectedRows ) {
+					equal( affectedRows, 4 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		/*
+		tests.push( function() {
+			asyncTest( 'Deleting records (schema#del)', function() {
+				schema.del( 1, function( affectedRows ) {
+					equal( affectedRows, 1 );
+				} );
+				schema.del( [ 2, 3 ], function( affectedRows ) {
+					equal( affectedRows, 2 );
+				} );
+				schema.del( [ 50 ], function( affectedRows ) {
+					equal( affectedRows, 0 );
+					start();
+					
+					next();
+				} );
+				
+			} )
+		} );
+		*/
+		
+		tests.push( function() {
+			asyncTest( 'Truncating a schema (schema#empty)', function() {
+				schema.empty( function( affectedRows ) {
+					equal( affectedRows, 4 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Dropping a schema (schema#destroy)', function() {
+				schema.destroy( function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
 		} );
 
 		next();

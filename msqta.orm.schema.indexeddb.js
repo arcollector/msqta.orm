@@ -421,8 +421,9 @@ MSQTA._Schema.IndexedDB = {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			fields = this._fieldsName, fieldName,
+			pk = this._primaryKey,
 			schemaName = this._name,
-			data, i, l;
+			data, i, l, k, m = fields.length;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -430,14 +431,10 @@ MSQTA._Schema.IndexedDB = {
 		
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
-			for( fieldName in data ) {
-				if( fields.indexOf( fieldName ) === -1 ) {
-					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
-				}
+			for( k = 0; k < m; k++ ) {
+				fieldName = fields[k];
 				data[fieldName] = this._getValueBySchema( fieldName, data[fieldName] );
-			}
-			if( !Object.keys( data ).length ) {
-				MSQTA._Errors.put2( databaseName, schemaName );
+				delete data[pk];
 			}
 		}
 
@@ -495,7 +492,7 @@ MSQTA._Schema.IndexedDB = {
 			for( fieldName in cmpFields ) {
 				fieldValue = cmpFields[fieldName];
 				parsedValue = this._getValueBySchema( fieldName, fieldValue );
-				if( !parsedValue ) {
+				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
 				}
 				whereClause[fieldName] = parsedValue;
@@ -527,7 +524,7 @@ MSQTA._Schema.IndexedDB = {
 			type: 'set',
 			schema: schemaName,
 			indexes: this._indexes,
-			
+			primaryKey: this._primaryKey,
 			data: queries,
 			callback: userCallback,
 			context: userContext

@@ -40,12 +40,6 @@ MSQTA._Errors = {
 	getWithLike2: function( databaseName, schemaName, fieldName ) {
 		throw Error( 'MSQTA-ORM: getWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
-	put1: function( databaseName, schemaName, fieldName ) {
-		throw Error( 'MSQTA-ORM: put: column ' + fieldName + ' is not present in the "' + schemaName + '" schema from the "' + databaseName + '" database!' ); 
-	},
-	put2: function( databaseName, schemaName ) {
-		throw Error( 'MSQTA-ORM: put: values are missing in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
-	},
 	set1: function( databaseName, schemaName, setDatas ) {
 		throw Error( 'MSQTA-ORM: set: data param is invalid for the "' + schemaName + '" schema from the "' + databaseName + '" database!', setDatas );
 	},
@@ -316,6 +310,7 @@ MSQTA._Helpers = {
 			schemaFieldData.abstract = type;
 			schemaFieldData.real = realDataType + ( allowNull ? ' NULL' : '' );
 			schemaFieldData.isJSON = type === 'object' || type === 'array';
+		
 		}
 	}
 };
@@ -589,7 +584,7 @@ MSQTA.ORM = function( settings, callback, context ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}
 	
-	settings.callback = typeof callback !== 'function' ? MSQTA._Helpers.noop : callback;
+	settings.callback = typeof callback === 'function' ? callback : MSQTA._Helpers.defaultCallback;
 	settings.context = context || window;
 	
 	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
@@ -656,6 +651,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	if( schemaFields[pk].type !== 'integer' ) {
 		throw Error( 'MSQTA-Schema: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
+	// force null values on the primary key, to get working the auto_increment
+	schemaFields[pk].allowNull = true;
 	
 	var fieldName, fieldData,
 		schemaIndexes = [],

@@ -861,7 +861,7 @@ MSQTA._ORM.IndexedDB = {
 				targetPk = target[pk], fieldName,
 				colsCount = Object.keys( target ).length;
 			
-			if( pk && targetPk ) {
+			if( targetPk ) {
 				objectStore.get( targetPk ).onsuccess = function( e ) {
 					var record = e.target.result,
 						req;
@@ -872,7 +872,9 @@ MSQTA._ORM.IndexedDB = {
 					
 					req = objectStore.put( record );
 					req.onsuccess = function( e ) {
-						affectedRows++;
+						if( e.target.result ) {
+							affectedRows++;
+						}
 						next();
 					};
 					req.onerror = function( e ) {
@@ -904,7 +906,9 @@ MSQTA._ORM.IndexedDB = {
 							
 							req = cursor.update( record );
 							req.onsuccess = function( e ) {
-								affectedRows++;
+								if( e.target.result ) {
+									affectedRows++;
+								}
 								cursor.continue();
 							};
 							req.onerror = function( e ) {
@@ -997,8 +1001,8 @@ MSQTA._ORM.IndexedDB = {
 	_destroy2: function( queryData ) {
 		var self = this,
 			databaseName = this._name,
-			Schema = self._Schemas[schemaName],
 			schemaName = queryData.schema,
+			Schema = this._Schemas[schemaName],
 			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
 		
 		req.onsuccess = function( e ) {
@@ -1021,7 +1025,7 @@ MSQTA._ORM.IndexedDB = {
 						delete self._Schemas[schemaName];
 						MSQTA._Helpers.dimSchemaInstance( Schema );
 						
-						this._done( queryData );
+						this._done( queryData, true );
 					}, self );
 				};
 			};
