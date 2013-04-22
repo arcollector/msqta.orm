@@ -10,12 +10,75 @@
 		<div id="qunit"></div>
 		<div id="qunit-fixture"></div>
 		<script>
+			var db, schema;
+			var tests = [], i = 0;
+			
+			next = function() {
+				if( tests[i] ) {
+					tests[i]();
+					i++;
+				}
+			};
+		</script>
+		<script>
+		tests.push( function() {
 			asyncTest( 'Creating a database', 1, function() {
-				var db = MSQTA.ORM( 'test.db', function( statusCode ) {
+				db = MSQTA.ORM( 'test.db', function( statusCode ) {
 					equal( statusCode, true );
 					start();
+					
+					next();
 				} );
 			} );
+		} );
+		</script>
+		<script>
+		tests.push( function() {
+			asyncTest( 'Dropping a database', 1, function() {
+				db.destroy( function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		</script>
+		<script>
+		tests.push( function() {
+			asyncTest( 'Creating a database again', 1, function() {
+				db = MSQTA.ORM( 'test.db', function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		</script>
+		<script>
+		tests.push( function() {
+			asyncTest( 'Creating an schema', 1, function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						age: { type: 'integer', index: true },
+						date: { type: 'object' }
+					},
+					primaryKey: 'id'
+				}, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		</script>
+		<script>
+			next();
 		</script>
 	</body>
 </html>

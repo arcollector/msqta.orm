@@ -19,6 +19,7 @@ function help() {
 	console.log( '' );
 	console.log( 'To build MSQTA.ORM with only support for WebSQL run the comand:' );
 	console.log( '		$ node build.js -websql' );
+	console.log( '' );
 	
 }
 
@@ -49,16 +50,16 @@ function main() {
 // Globals
 var packageFile = fs.readFileSync( __dirname + '/package.json' );
 var versionString = JSON.parse( packageFile ).version;
-var msqtaFilename = 'msqta.orm-' + versionString + '.js';
+var msqtaFilename = 'msqta.orm-' + versionString;
 var msqtaBuildDir = 'release';
-var msqtaBuildPath = './' + msqtaBuildDir + '/' + msqtaFilename;
 
-var msqtaORM = './' + 'msqta.orm.js';
-var msqtaIndexedDBORM = './' + 'msqta.orm.indexeddb.js';
-var msqtaIndexedDBSchema = './' + 'msqta.orm.schema.indexeddb.js';
-var msqtaWebSQLORM = './' + 'msqta.orm.websql.js';
-var msqtaWebSQLSchema = './' + 'msqta.orm.schema.websql.js';
+var currentDir = './';
 
+var msqtaORM = currentDir + 'msqta.orm.js';
+var msqtaIndexedDBORM = currentDir + 'msqta.orm.indexeddb.js';
+var msqtaIndexedDBSchema = currentDir + 'msqta.orm.schema.indexeddb.js';
+var msqtaWebSQLORM = currentDir + 'msqta.orm.websql.js';
+var msqtaWebSQLSchema = currentDir + 'msqta.orm.schema.websql.js';
 
 // ************************************** //
 function clean() {
@@ -69,6 +70,10 @@ function preBuild() {
 	shelljs.mkdir( '-p', './release' );
 }
 
+function getMsqtaBuildName( isMinified ) {
+	return currentDir + msqtaBuildDir + '/' + msqtaFilename + ( isMinified ? '.min' : '' ) + '.js';
+}
+
 // ************************************** //
 
 function buildFull() {
@@ -76,10 +81,17 @@ function buildFull() {
 	clean();
 	preBuild();
 	
+	var source = [ msqtaORM, msqtaIndexedDBORM, msqtaIndexedDBSchema, msqtaWebSQLORM, msqtaWebSQLSchema ];
+	
 	copy( {
-		source: [ msqtaORM, msqtaIndexedDBORM, msqtaIndexedDBSchema, msqtaWebSQLORM, msqtaWebSQLSchema ],
+		source: source,
 		filter: copy.filter.uglifyjs,
-		dest: msqtaBuildPath
+		dest: getMsqtaBuildName( true )
+	} );
+	
+	copy( {
+		source: source,
+		dest: getMsqtaBuildName()
 	} );
 	
 }
@@ -90,12 +102,20 @@ function buildWebSQL() {
 	
 	clean();
 	preBuild();
-
+	
+	var source = [ msqtaORM, msqtaWebSQLORM, msqtaWebSQLSchema ];
+	
 	copy( {
-		source: [ msqtaORM, msqtaWebSQLORM, msqtaWebSQLSchema ],
+		source: source,
 		filter: copy.filter.uglifyjs,
-		dest: msqtaBuildPath
+		dest: getMsqtaBuildName( true )
 	} );
+	
+	copy( {
+		source: source,
+		dest: getMsqtaBuildName()
+	} );
+	
 }
 
 // ************************************** //
@@ -105,10 +125,17 @@ function buildIndexedDB() {
 	clean();
 	preBuild();
 	
+	var source = [ msqtaORM, msqtaIndexedDBORM, msqtaIndexedDBSchema ];
+	
 	copy( {
-		source: [ msqtaORM, msqtaIndexedDBORM, msqtaIndexedDBSchema ],
+		source: source,
 		filter: copy.filter.uglifyjs,
-		dest: msqtaBuildPath
+		dest: getMsqtaBuildName( true )
+	} );
+	
+	copy( {
+		source: source,
+		dest: getMsqtaBuildName()
 	} );
 }
 

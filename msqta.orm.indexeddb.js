@@ -113,10 +113,14 @@ MSQTA._ORM.IndexedDB = {
 						
 						MSQTA._Helpers.dimORMInstance( self );
 						
-						callback.call( context || window );
+						callback.call( context || window, true );
 					};
 				};
 			};
+		};
+		
+		req.onerror = function( e ) {
+			callback.call( context || window, false );
 		};
 	},
 /*********************/
@@ -148,6 +152,8 @@ MSQTA._ORM.IndexedDB = {
 					self._initSchemas2( db, objectStore, userDatabaseRecord );
 				};
 			};
+			
+			req.onerror = this._initSchemaFail;
 			
 		} else {
 			this._endSchemasInitialization();
@@ -293,6 +299,8 @@ MSQTA._ORM.IndexedDB = {
 			
 			self._saveBranch( self._nextSchemaToInit, self );
 		};
+		
+		req.onerror = this._initSchemaFail;
 	},
 	
 	_updateSchema: function() {
@@ -311,6 +319,8 @@ MSQTA._ORM.IndexedDB = {
 				self._updateSchema2();
 			};
 		};
+		
+		req.onerror = this._initSchemaFail;
 	},
 
 	_updateSchema2: function() {
@@ -334,6 +344,8 @@ MSQTA._ORM.IndexedDB = {
 				
 				objectStore.openCursor().onsuccess = getRecord;
 			};
+			
+			req.onerror = this._initSchemaFail;
 		};
 		
 		var getRecord = function( e ) {
@@ -372,6 +384,8 @@ MSQTA._ORM.IndexedDB = {
 				}
 				objectStore.add( record, key ).onsuccess = nextRecord;
 			};
+			
+			req.onerror = this._initSchemaFail;
 		};
 		
 		var nextRecord = function( e ) {
@@ -418,6 +432,7 @@ MSQTA._ORM.IndexedDB = {
 			self._saveBranch( next, self );
 		};
 		
+		req.onerror = this._initSchemaFail;
 	},
 	
 	_updateSchema4: function() {
@@ -441,6 +456,8 @@ MSQTA._ORM.IndexedDB = {
 				
 				objectStore.openCursor().onsuccess = getRecord;
 			};
+			
+			req.onerror = this._initSchemaFail;
 		};
 		
 		var getRecord = function( e ) {
@@ -491,6 +508,8 @@ MSQTA._ORM.IndexedDB = {
 				req.onsuccess = nextRecord;
 				req.onerror = nextRecord;
 			};
+			
+			req.onerror = this._initSchemaFail;
 		};
 		
 		var nextRecord = function( e ) {
@@ -526,6 +545,8 @@ MSQTA._ORM.IndexedDB = {
 				self._updateSchema6();
 			};
 		};
+		
+		req.onerror = this._initSchemaFail;
 	},
 	
 	_updateSchema6: function() {
@@ -556,6 +577,8 @@ MSQTA._ORM.IndexedDB = {
 				};
 			};
 		};
+		
+		req.onerror = this._initSchemaFail;
 	},
 	
 	_updateSchema7: function() {
@@ -571,10 +594,13 @@ MSQTA._ORM.IndexedDB = {
 				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( schemaName );
 			
+			// truncate schema, this happend the the "forceEmpty" flag is actived
 			objectStore.clear().onsuccess = function( e ) {
 				self._updateSchema8();
 			};
 		};
+		
+		req.onerror = this._initSchemaFail;
 	},
 		
 	_updateSchema8: function() {
@@ -583,6 +609,10 @@ MSQTA._ORM.IndexedDB = {
 		}
 		// done
 		this._nextSchemaToInit();
+	},
+	
+	_initSchemaFail: function() {
+		this._nextSchemaToInit( false );
 	},
 	
 	/**
@@ -614,15 +644,13 @@ MSQTA._ORM.IndexedDB = {
 		}
 	},
 	
-	_nextSchemaToInit: function() {
+	_nextSchemaToInit: function( statusCode ) {
 		var Schema = this._currentSchema,
 			callback = Schema._initCallback,
 			context = Schema._initContext;
 		
-		if( callback ) {
-			// get back to the user
-			callback.call( context || window );
-		}
+		// get back to the user
+		callback.call( context, typeof statusCode === 'undefined' ? true: statusCode );
 		// clean
 		delete Schema._initCallback;
 		delete Schema._initContext;

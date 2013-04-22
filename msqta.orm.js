@@ -80,37 +80,6 @@ MSQTA._Errors = {
 /***************************************/
 /***************************************/
 MSQTA._Helpers = {
-	ormMethods: [ 'batch', 'destroy' ],
-	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getAllWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
-	
-	dimSchemaInstance: function( Schema ) {
-		var schemaMethods = this.schemaMethods,
-			noop = this.noop,
-			i, l;
-		
-		for( i = 0, l = schemaMethods.length; i < l; i++ ) {
-			Schema[schemaMethods[i]] = noop;
-		}
-	},
-	
-	dimORMInstance: function( ORM ) {
-		var ormMethods = this.ormMethods,
-			schemaMethods = this.schemaMethods, schemaName, Schema, schemas,
-			noop = this.noop,
-			i, l;
-		
-		for( i = 0, l = ormMethods.length; i < l; i++ ) {
-			ORM[ormMethods[i]] = noop;
-		}
-		schemas = ORM._Schemas;
-		for( schemaName in schemas ) {
-			Schema = schemas[schemaName];
-			for( i = 0, l = schemaMethods.length; i < l; i++ ) {
-				Schema[schemaMethods[i]] = noop;
-			}
-		}
-	},
-/***************************************/	
 	noop: function() {
 	},
 	
@@ -174,6 +143,37 @@ MSQTA._Helpers = {
 	castGeneric: function( value ) {
 		return value;
 	},
+/***************************************/	
+	ormMethods: [ 'batch', 'destroy' ],
+	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getAllWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
+	
+	dimSchemaInstance: function( Schema ) {
+		var schemaMethods = this.schemaMethods,
+			noop = this.noop,
+			i, l;
+		
+		for( i = 0, l = schemaMethods.length; i < l; i++ ) {
+			Schema[schemaMethods[i]] = noop;
+		}
+	},
+	
+	dimORMInstance: function( ORM ) {
+		var ormMethods = this.ormMethods,
+			schemaMethods = this.schemaMethods, schemaName, Schema, schemas,
+			noop = this.noop,
+			i, l;
+		
+		for( i = 0, l = ormMethods.length; i < l; i++ ) {
+			ORM[ormMethods[i]] = noop;
+		}
+		schemas = ORM._Schemas;
+		for( schemaName in schemas ) {
+			Schema = schemas[schemaName];
+			for( i = 0, l = schemaMethods.length; i < l; i++ ) {
+				Schema[schemaMethods[i]] = noop;
+			}
+		}
+	},
 /***************************************/
 /***************************************/
 	getORMPrototype: function( prefered ) {
@@ -204,6 +204,10 @@ MSQTA._Helpers = {
 			args = setup.args,
 			options = {},
 			schema;
+				
+		if( !ORM ) {
+			throw Error( 'MSQTA-ORM: Schema: missing new keyword at initializing a schema' );
+		}
 
 		if( typeof args[1] === 'function' ) {
 			options.callback = args[1];
@@ -680,6 +684,6 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	// options
 	this.forceDestroy = options.forceDestroy;
 	this.forceEmpty = this.forceDestroy ? false : options.forceEmpty;
-	this._initCallback = options.callback;
-	this._initContext = options.context;
+	this._initCallback = typeof options.callback === 'function' ? options.callback : MSQTA._Helpers.defaultCallback;
+	this._initContext = options.context || window;
 };
