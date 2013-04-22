@@ -34,11 +34,11 @@ MSQTA._Errors = {
 	getByIndex2: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: getByIndex: missing search value in "getByIndex" method from "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
-	getAllWithLike1: function() {
-		throw Error( 'MSQTA-ORM: getAllWithLike: like data is not valid, it must be something like this: "{type: "both", value: "john"}" !' );
+	getWithLike1: function() {
+		throw Error( 'MSQTA-ORM: getWithLike: like data is not valid, it must be something like this: "{type: "both", value: "john"}" !' );
 	},
-	getAllWithLike2: function( databaseName, schemaName, fieldName ) {
-		throw Error( 'MSQTA-ORM: getAllWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+	getWithLike2: function( databaseName, schemaName, fieldName ) {
+		throw Error( 'MSQTA-ORM: getWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
 	put1: function( databaseName, schemaName, fieldName ) {
 		throw Error( 'MSQTA-ORM: put: column ' + fieldName + ' is not present in the "' + schemaName + '" schema from the "' + databaseName + '" database!' ); 
@@ -148,7 +148,7 @@ MSQTA._Helpers = {
 	},
 /***************************************/	
 	ormMethods: [ 'batch', 'destroy' ],
-	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getAllWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
+	schemaMethods: [ 'del', 'destroy', 'empty', 'get', 'getAll', 'getWithLike', 'getByCallback', 'getByIndex', 'getByIndexWithRange', 'put', 'set' ],
 	
 	dimSchemaInstance: function( Schema ) {
 		var schemaMethods = this.schemaMethods,

@@ -596,7 +596,7 @@ MSQTA._Schema.WebSQL = {
 		} );
 	},
 	
-	getAllWithLike: function( fields, likeData, userCallback, userContext ) {
+	getWithLike: function( fields, likeData, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaFields = this._schemaFields,
@@ -606,13 +606,13 @@ MSQTA._Schema.WebSQL = {
 			selectAllQueryWithLike, whereClause = [];
 		
 		if( typeof likeData !== 'object' ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 		
 		likeType = Object.keys( likeData )[0];
 		searchValue = likeData[likeType];
 		if( !likeType || !searchValue ) {
-			MSQTA._Errors.getAllWithLike1();
+			MSQTA._Errors.getWithLike1();
 		}
 		
 		if( likeType === 'both' ) {
@@ -629,7 +629,7 @@ MSQTA._Schema.WebSQL = {
 		for( i = 0, l = fields.length; i < l; i++ ) {
 			fieldName = fields[i];
 			if( !schemaFields[fieldName] ) {
-				MSQTA._Errors.getAllWithLike2( databaseName, schemaName, fieldName );
+				MSQTA._Errors.getWithLike2( databaseName, schemaName, fieldName );
 			}
 			whereClause.push( fieldName + ' LIKE ' + searchValue );
 		}

@@ -241,6 +241,57 @@
 				} );
 			} );
 		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering all with like (schema#getWithLike)', function() {
+				schema.getWithLike( 'name', { both: 'a' }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getWithLike( 'name', { end: 'e' }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getWithLike( 'name', { start: 'e' }, function( results ) {
+					equal( results.length, 3 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by index (schema#getByIndex)', function() {
+				schema.getByIndex( 'name', 'El tragasable', function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndex( 'name', [ 'El tragasable', 'EL virgo' ], function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndex( 'name', [ 'me gusta el pedazo' ], function( results ) {
+					equal( results.length, 0 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering all with like (schema#getByIndex)', function() {
+				schema.getByIndex( 'name', 'El tragasable', function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndex( 'name', [ 'El tragasable', 'EL virgo' ], function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndex( 'name', [ 'me gusta el pedazo' ], function( results ) {
+					equal( results.length, 0 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
 
 		next();
 		</script>

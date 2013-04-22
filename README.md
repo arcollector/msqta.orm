@@ -226,10 +226,10 @@ This says, get all the records where its field/index `date` value falls into the
 	SELECT * FROM table_name WHERE date > '2010-10-10' AND date < '2010-10-31'
 ```
 
-## Schema#getAllWithLike
+## Schema#getWithLike
 Retrieves all records where any of its fields are like the specified one, this like using the `LIKE %string%` operator from the sql standard.
 ```javascript
-	schema.getAllWithLike( fieldsName, likeData, [ callback ], [ context ] );
+	schema.getWithLike( fieldsName, likeData, [ callback ], [ context ] );
 ```
 
 * `fieldsName`: a string OR an array with fields name used to do the comparision.
@@ -244,7 +244,7 @@ Retrieves all records where any of its fields are like the specified one, this l
 
 Check this example
 ```javascript
-	schema.getAllWithLike( 'name', { end: 'doe' }, [ callback ], [ context ] );
+	schema.getWithLike( 'name', { end: 'doe' }, [ callback ], [ context ] );
 ```
 Thinking in sql, this will translate to:
 ```sql
