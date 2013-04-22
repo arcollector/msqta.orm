@@ -75,6 +75,12 @@ MSQTA._ORM.IndexedDB = {
 				}
 			};
 		};
+		
+		// fail to open database
+		req.onerror = function( e ) {
+			// trigger event
+			this._initCallback.call( this._initContext, null );
+		};
 	},
 	
 	_init: function() {
@@ -82,7 +88,7 @@ MSQTA._ORM.IndexedDB = {
 			console.log( 'MSQTA-ORM: "' + this._name + '" database has been created!' );
 		}
 		// trigger event
-		this._initCallback.call( this._initContext );
+		this._initCallback.call( this._initContext, true );
 		// trigger the schemas process
 		this._initSchemas();
 	},

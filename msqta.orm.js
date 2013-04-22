@@ -570,6 +570,9 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 /***************************************/
 /***************************************/
 MSQTA.ORM = function( settings, callback, context ) {
+	if( typeof settings === 'string' ) {
+		settings = { name: settings };
+	}
 	if( !settings.name ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}

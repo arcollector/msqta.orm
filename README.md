@@ -51,7 +51,12 @@ Creating is also opening a database, you only create a database the first time t
 * `prefered` *(optional)*: some browsers supports WebSQL and IndexedDB, use this field to force it to use a specific implementation, if the browser don't support the prefered implementation it will use the implementation that it really support.
 * `forceDestroy` *(optional)*: only useful in dev stage, it drop the named database to be recreated again, brings to you always an empty database. This only possible with an IndexedDB implementation.
 
-`[callback]` an function to be called with a specified `[context]` after the database is created/opened.
+`[callback]` an function to be called with a specified `[context]` after the database is created/opened, it will receibe as param a status code (`true` or `false`) if the creation/opening was succefuly or not.
+
+Also you can omit the `settings` object and just pass a the database name string.
+```javascript
+	var db = new MSQTA.ORM( 'test.db', [callback], [context] );
+```
 
 ## Creating a schema
 A schema is just like a table, to set a schema do this:

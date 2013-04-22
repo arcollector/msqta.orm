@@ -1,0 +1,21 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>MSQTA.ORM - Test</title>
+		<script src="../release/msqta.orm-1.0.0.js"></script>
+		<script src="http://code.jquery.com/qunit/qunit-git.js"></script>
+		<link href="http://code.jquery.com/qunit/qunit-git.css" rel="stylesheet">
+	</head>
+	<body>
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script>
+			asyncTest( 'Creating a database', 1, function() {
+				var db = MSQTA.ORM( 'test.db', function( statusCode ) {
+					equal( statusCode, true );
+					start();
+				} );
+			} );
+		</script>
+	</body>
+</html>
