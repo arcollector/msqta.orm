@@ -2,31 +2,33 @@
 	<head>
 		<meta charset="utf-8">
 		<title>MSQTA.ORM - WebSQL Implementation Tests</title>
-		<script src="../release/msqta.orm-1.0.0.js"></script>
-		<script src="http://code.jquery.com/qunit/qunit-git.js"></script>
-		<link href="http://code.jquery.com/qunit/qunit-git.css" rel="stylesheet">
+		<script src="../msqta.orm.js"></script>
+		<script src="../msqta.orm.websql.js"></script>
+		<script src="../msqta.orm.schema.websql.js"></script>
+		<script src="qunit-git.js"></script>
+		<link href="qunit-git.css" rel="stylesheet">
 	</head>
 	<body>
 		<div id="qunit"></div>
 		<div id="qunit-fixture"></div>
 		<script>
 		// globals
-			var db, schema, dbOptions = {
-				name: 'test.db',
-				devMode: true,
-				prefered: 'webSQL'
-			};
-			var tests = [], i = 0;
-			
-			next = function() {
-				if( tests[i] ) {
-					tests[i]();
-					i++;
-				}
-			};
+		var db, schema, dbOptions = {
+			name: 'test.db',
+			devMode: true,
+			prefered: 'webSQL'
+		};
+		var tests = [], i = 0;
+		
+		next = function() {
+			if( tests[i] ) {
+				tests[i]();
+				i++;
+			}
+		};
 
 		tests.push( function() {
-			asyncTest( 'Creating a database', 1, function() {
+			asyncTest( 'Creating/opening a database', function() {
 				db = MSQTA.ORM( dbOptions, function( statusCode ) {
 					equal( statusCode, true );
 					start();
@@ -37,29 +39,7 @@
 		} );
 
 		tests.push( function() {
-			asyncTest( 'Dropping a database', 1, function() {
-				db.destroy( function( statusCode ) {
-					equal( statusCode, true );
-					start();
-					
-					next();
-				} );
-			} );
-		} );
-
-		tests.push( function() {
-			asyncTest( 'Creating a database again', 1, function() {
-				db = new MSQTA.ORM( dbOptions, function( statusCode ) {
-					equal( statusCode, true );
-					start();
-					
-					next();
-				} );
-			} );
-		} );
-
-		tests.push( function() {
-			asyncTest( 'Creating an schema', 1, function() {
+			asyncTest( 'Creating an schema but before dropping the schema', 1, function() {
 				schema = new db.Schema( {
 					name: 'clients',
 					fields: {
@@ -70,11 +50,14 @@
 						comments: { type: 'string' }
 					},
 					primaryKey: 'id'
-				}, function( statusCode ) {
-					equal( statusCode, true );
-					start();
+				}, { 
+					forceDestroy: true, 
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
 					
-					next();
+						next();
+					}
 				} );
 			} );
 		} );
@@ -85,7 +68,6 @@
 					// check if the new id is === 1
 					equal( lastID, 1 );
 					start();
-					
 					next();
 				} )
 			} );
@@ -100,7 +82,7 @@
 				], function( lastID ) {
 					equal( lastID, 4 );
 					start();
-					
+
 					next();
 				} );
 			} );
@@ -311,7 +293,6 @@
 			} );
 		} );
 		
-		/*
 		tests.push( function() {
 			asyncTest( 'Deleting records (schema#del)', function() {
 				schema.del( 1, function( affectedRows ) {
@@ -329,12 +310,11 @@
 				
 			} )
 		} );
-		*/
 		
 		tests.push( function() {
 			asyncTest( 'Truncating a schema (schema#empty)', function() {
 				schema.empty( function( affectedRows ) {
-					equal( affectedRows, 4 );
+					equal( affectedRows, 1 );
 					start();
 					
 					next();

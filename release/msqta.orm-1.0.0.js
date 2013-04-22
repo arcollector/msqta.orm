@@ -2464,9 +2464,7 @@ MSQTA._ORM.WebSQL = {
 		
 		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
 
-		if( this._initCallback ) {
-			this._initCallback.call( this.initContext || window );
-		}
+		this._initCallback.call( this.initContext, true );
 		
 		this._initSchemas();
 	},
@@ -3135,9 +3133,7 @@ MSQTA._Schema.WebSQL = {
 		delete this._createTableQuery;
 		delete this._indexesSQL;
 		
-		if( this._initCallback ) {
-			this._initCallback.call( this._initContext || window );
-		}
+		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;
 		delete this._initContext;
 		

@@ -39,9 +39,7 @@ MSQTA._ORM.WebSQL = {
 		
 		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
 
-		if( this._initCallback ) {
-			this._initCallback.call( this.initContext || window );
-		}
+		this._initCallback.call( this.initContext, true );
 		
 		this._initSchemas();
 	},
@@ -49,6 +47,7 @@ MSQTA._ORM.WebSQL = {
 	_initSchema: function( Schema ) {
 		this._schemasToInit.push( Schema );
 		if( !this._isBlocked ) {
+			this._isBlocked = true;
 			this._initSchemas();
 		}
 	},
@@ -69,7 +68,7 @@ MSQTA._ORM.WebSQL = {
 		this._isBlocked = false;
 	},
 	
-	_saveSchemaOnTestigoDatabase: function( callback, context ) {
+	_saveSchemaOnTestigoDatabase: function( callback, context, arg ) {
 		var self = this,
 			databaseName = this._name,
 			schemasDefinition = this._schemasDefinition;
@@ -80,7 +79,8 @@ MSQTA._ORM.WebSQL = {
 		
 		this._testigoDB.transaction( function( tx ) {
 			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')', [], function() {
-				callback.call( context );
+				// true for success
+				callback.call( context, arg );
 			} );
 		} );
 	},
@@ -95,7 +95,7 @@ MSQTA._ORM.WebSQL = {
 		delete this._Schemas[schemaName];
 		MSQTA._Helpers.dimSchemaInstance( Schema );
 	
-		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext );
+		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
 	},
 	
 	/**
@@ -137,23 +137,43 @@ MSQTA._ORM.WebSQL = {
 			return;
 		}
 		this._isWaiting = true;
-		
+
 		this._transaction2( queryData );
 	},
 	
 	_transaction2: function( queryData ) {
 		// save a refenrece for when the transaction is done
 		this._lastQuery = queryData;
-		
+
 		// save a reference used in the success and error functions
 		var self = this,
+			// update an update at time is executed, so we need to keep tracking manually
+			// the affected rows
+			rowsAffected = 0,
 			query = queryData.query;
 		
 		if( !( query instanceof Array ) ) {
 			query = [ query ];
 		}
 		
+		// when you trigger multiple update queries, we need to keep
+		// track the rows affected in the operation
+		var noop = queryData.isUpdate ? function( tx, results ) {
+			rowsAffected += results.rowsAffected;
+		} : MSQTA._Helpers.noop;
+		
 		var success = function( tx, results ) {
+			if( queryData.isUpdate ) {
+				// sum the last executed one
+				queryData.returnValue = results.rowsAffected + rowsAffected;
+		
+			} else if( queryData.isInsert ) {
+				queryData.returnValue = results.insertId;
+			
+			} else if( queryData.isDelete ) {
+				queryData.returnValue = results.rowsAffected;
+			}
+		
 			self._results( results );
 		};
 		
@@ -170,7 +190,7 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, [], !l ? success : MSQTA._Helpers.noop, error );
+				tx.executeSql( q, [], l ? noop : success, error );
 			}
 		} );
 	},
@@ -195,7 +215,7 @@ MSQTA._ORM.WebSQL = {
 		// get back with the user
 		} else {
 			// only delete, update, insert quries falls here
-			queryData.userCallback.call( queryData.userContext, queryData.isInsert ? results.insertId : results.rowsAffected );
+			queryData.userCallback.call( queryData.userContext, queryData.returnValue );
 		}
 		
 		this._continue();
@@ -206,7 +226,7 @@ MSQTA._ORM.WebSQL = {
 			// more queries to be executed in the queue
 			if( this._queriesInternal.length ) {
 				this._transaction( this._queriesInternal.shift() );
-			} else if( this._queries.length ) {
+			} else if( this._queries.length && !this._isBlocked ) {
 				this._transaction( this._queries.shift() );
 			}
 		}

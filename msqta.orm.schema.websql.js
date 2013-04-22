@@ -75,9 +75,9 @@ MSQTA._Schema.WebSQL = {
 		if( this.forceDestroy ) {
 			this._isSchemaDropped = true;
 			
-			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" ddatabase, then it will recreate again\n\tDROP TABLE ' + schemaName;
+			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -207,7 +207,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		// create the new table
-		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -227,7 +227,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t1) Creating table "' + tempschemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
-		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isQueryInternal: true } );
+		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isInternal: true } );
 	},
 	
 	_updateSchema2: function() {
@@ -249,7 +249,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t2) Fetching all rows from old schema "' + schemaName + '" by 500 rows per time' );
 		}
 	
-		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isQueryInternal: true } );
+		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isInternal: true } );
 	},
 	
 	_updateSchema3: function( results ) {
@@ -321,9 +321,9 @@ MSQTA._Schema.WebSQL = {
 		// get for more records
 		if( l === 500 ) {
 			this._offset += 500;
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isQueryInternal: true } );
+			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isInternal: true } );
 		} else {
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isQueryInternal: true } );
+			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isInternal: true } );
 		}
 	},
 	
@@ -343,7 +343,7 @@ MSQTA._Schema.WebSQL = {
 		// to avoid this process in _updateSchema5
 		this._isSchemaDropped = true;
 		
-		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema5: function() {
@@ -373,7 +373,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( indexQueries.length ) {
-			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isQueryInternal: true } );
+			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isInternal: true } );
 			
 		} else {
 			this._updateSchema6();
@@ -406,9 +406,7 @@ MSQTA._Schema.WebSQL = {
 		delete this._createTableQuery;
 		delete this._indexesSQL;
 		
-		if( this._initCallback ) {
-			this._initCallback.call( this._initContext || window );
-		}
+		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;
 		delete this._initContext;
 		
@@ -422,7 +420,7 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isQueryInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -602,8 +600,8 @@ MSQTA._Schema.WebSQL = {
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
 			i, l, fieldName,
-			likeType, searchValue;
-			selectAllQueryWithLike, whereClause = [];
+			likeType, searchValue,
+			selectQueryWithLike, whereClause = [];
 		
 		if( typeof likeData !== 'object' ) {
 			MSQTA._Errors.getWithLike1();
@@ -634,10 +632,10 @@ MSQTA._Schema.WebSQL = {
 			whereClause.push( fieldName + ' LIKE ' + searchValue );
 		}
 		
-		selectAllQueryWithLike = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
+		selectQueryWithLike = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
 
 		ORM._transaction( { 
-			query: selectAllQueryWithLike, 
+			query: selectQueryWithLike, 
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -673,7 +671,7 @@ MSQTA._Schema.WebSQL = {
 			insertQueryCols,
 			insertQueryValues,
 			insertQueries = [],
-			data, i, l;
+			data, i, l, k, m = fields.length;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -683,15 +681,10 @@ MSQTA._Schema.WebSQL = {
 			data = datas[i];
 			insertQueryCols = [];
 			insertQueryValues = [];
-			for( fieldName in data ) {
-				if( fields.indexOf( fieldName ) === -1 ) {
-					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
-				}
+			for( k = 0; k < m; k++ ) {
+				fieldName = fields[k];
 				insertQueryCols.push( fieldName );
 				insertQueryValues.push( this._getValueBySchema( fieldName, data[fieldName] ) );
-			}
-			if( !insertQueryCols.length ) {
-				MSQTA._Errors.put2( databaseName, schemaName );
 			}
 			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValues.join( ' , ' ) + ' )' );
 		}
@@ -792,7 +785,8 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		ORM._transaction( { 
-			query: queries, 
+			query: queries,
+			isUpdate: true,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -840,6 +834,7 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: deleteQuery,
 			primaryKey: pk,
+			isDelete: true,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -873,7 +868,8 @@ MSQTA._Schema.WebSQL = {
 			deleteQuery = 'DELETE FROM ' + schemaName;
 
 		ORM._transaction( { 
-			query: deleteQuery, 
+			query: deleteQuery,
+			isDelete: true,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );

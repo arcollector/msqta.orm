@@ -64,9 +64,9 @@ Also you can omit the `settings` object and just pass a the database name string
 ## Creating a schema
 A schema is just like a table, to set a schema do this:
 ```javascript
-	var schema = new db.Schema( settings, [options] )
+	var schema = new db.Schema( definition, [options] )
 ```	
-`settings` is an object that dictates the name of the schema, its fields *(columns)* and the primary key, for example something like this (all are required):
+`definition` is an object that dictates the name of the schema, its fields *(columns)* and the primary key, for example something like this (all are required):
 ```javascript
 	name: 'clients',
 	fields: {
@@ -100,6 +100,11 @@ A schema is just like a table, to set a schema do this:
 * `context`: ...a specified context
 
 **THIS IS VERY IMPORTANT**: When you change a schema field type, MSQTA.ORM will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
+
+If you are no interested about the `options` object, you can initialize a new schema, like this way:
+```javascript
+	var schema = new db.Schema( definition, [callback], [context] );
+```	
 
 ## CRUDing
 ## Putting values on a schema (Schema#put)

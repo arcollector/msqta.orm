@@ -839,13 +839,13 @@ MSQTA._ORM.IndexedDB = {
 			indexes = queryData.indexes,
 			pk = queryData.primaryKey,
 		
-			affectedRows = 0,
+			rowsAffected = 0,
 			
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 			
 			} else {
 				// update the data
@@ -873,7 +873,7 @@ MSQTA._ORM.IndexedDB = {
 					req = objectStore.put( record );
 					req.onsuccess = function( e ) {
 						if( e.target.result ) {
-							affectedRows++;
+							rowsAffected++;
 						}
 						next();
 					};
@@ -907,7 +907,7 @@ MSQTA._ORM.IndexedDB = {
 							req = cursor.update( record );
 							req.onsuccess = function( e ) {
 								if( e.target.result ) {
-									affectedRows++;
+									rowsAffected++;
 								}
 								cursor.continue();
 							};
@@ -936,13 +936,13 @@ MSQTA._ORM.IndexedDB = {
 			datas = queryData.data,
 			pk = queryData.primaryKey,
 		
-			affectedRows = 0,
+			rowsAffected = 0,
 		
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 				
 			} else {
 				// update the data
@@ -955,7 +955,7 @@ MSQTA._ORM.IndexedDB = {
 			var data = datas[currentIndex];
 			objectStore.delete( data[pk] ).onsuccess = function( e ) {
 				if( e.target.result ) {
-					affectedRows++;
+					rowsAffected++;
 				}
 				next();
 			};
@@ -966,13 +966,13 @@ MSQTA._ORM.IndexedDB = {
 	
 	_empty: function( queryData ) {
 		var self = this,
-			affectedRows,
+			rowsAffected,
 			objectStore = queryData.objectStore;
 		
 		objectStore.count().onsuccess = function( e ) {
-			affectedRows = e.target.result;
+			rowsAffected = e.target.result;
 			objectStore.clear().onsuccess = function( e ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 			};
 		};
 	},
