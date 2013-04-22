@@ -259,7 +259,7 @@ Use these method to destroy a database, this only works on a IndexedDB implement
 	db.destroy( [callback], [context] );
 ```
 
-#Database#batch
+## Database#batch
 Very useful method, use to wrapped out severals CRUD operations (`put`, `set` and `del`) in differents schemas that conforms the database, in a single call.
 ```javascript
 	db.batch( data, [callback], [context] );
