@@ -22,6 +22,9 @@ MSQTA._Errors = {
 	getByIndexWithRange4: function() {
 		throw Error( 'MSQTA-ORM: getByIndexWithRange: comparator data has an invalid set of comparision operators!' );
 	},
+	getByIndexWithRange5: function() {
+		throw Error( 'MSQTA-ORM: getByIndexWithRange: your range (>|>=) && (<|<=) is invalid!' );
+	},
 	getByCallback: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: getByCallback: missing callback function on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
@@ -204,7 +207,7 @@ MSQTA._Helpers = {
 			args = setup.args,
 			options = {},
 			schema;
-				
+
 		if( !ORM ) {
 			throw Error( 'MSQTA-ORM: Schema: missing new keyword at initializing a schema' );
 		}
@@ -307,6 +310,7 @@ MSQTA._Helpers = {
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
 		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
 		schemaFieldData.toJS = MSQTA._Helpers.getCaster( type );
+		schemaFieldData.isDate = type === 'date' || type === 'time' || type === 'datetime';
 		
 		if( implementation === 'webSQL' ) {
 			schemaFieldData.abstract = type;
@@ -477,7 +481,11 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
+			value.setHours( 0 );
+			value.setMinutes( 0 );
+			value.setSeconds( 0 );
+			value.setMilliseconds( 0 );
 			return value;
 		} 
 		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
@@ -485,11 +493,11 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return onZero;
 		}
 		m = m[1].split( '-' );
-		return new Date( m[0], m[1]-1, m[2] );
+		return new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
 	},
 	
 	sanitizeTime: function( value, onZero ) {
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
 			return value;
 		}
 		var m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
@@ -512,7 +520,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
 			return value;
 		}
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?::(\d{2})[^Z]+Z|:(\d{2}))?$/.exec( value );
@@ -656,6 +664,9 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	for( fieldName in schemaFields ) {
 		fieldData = schemaFields[fieldName];
 		if( fieldData.index ) {
+			if( !/^(integer|float|string|date|time|datetime)$/.test( fieldData.type ) ) {
+				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+			}
 			schemaIndexes.push( fieldName );
 		} else {
 			fieldData.index = false;

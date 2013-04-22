@@ -22,6 +22,9 @@ MSQTA._Errors = {
 	getByIndexWithRange4: function() {
 		throw Error( 'MSQTA-ORM: getByIndexWithRange: comparator data has an invalid set of comparision operators!' );
 	},
+	getByIndexWithRange5: function() {
+		throw Error( 'MSQTA-ORM: getByIndexWithRange: your range (>|>=) && (<|<=) is invalid!' );
+	},
 	getByCallback: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: getByCallback: missing callback function on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
@@ -204,7 +207,7 @@ MSQTA._Helpers = {
 			args = setup.args,
 			options = {},
 			schema;
-				
+
 		if( !ORM ) {
 			throw Error( 'MSQTA-ORM: Schema: missing new keyword at initializing a schema' );
 		}
@@ -307,6 +310,7 @@ MSQTA._Helpers = {
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
 		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
 		schemaFieldData.toJS = MSQTA._Helpers.getCaster( type );
+		schemaFieldData.isDate = type === 'date' || type === 'time' || type === 'datetime';
 		
 		if( implementation === 'webSQL' ) {
 			schemaFieldData.abstract = type;
@@ -477,7 +481,11 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
+			value.setHours( 0 );
+			value.setMinutes( 0 );
+			value.setSeconds( 0 );
+			value.setMilliseconds( 0 );
 			return value;
 		} 
 		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
@@ -485,11 +493,11 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return onZero;
 		}
 		m = m[1].split( '-' );
-		return new Date( m[0], m[1]-1, m[2] );
+		return new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
 	},
 	
 	sanitizeTime: function( value, onZero ) {
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
 			return value;
 		}
 		var m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
@@ -512,7 +520,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date && !isNaN( value-0 ) ) {
 			return value;
 		}
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?::(\d{2})[^Z]+Z|:(\d{2}))?$/.exec( value );
@@ -656,6 +664,9 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	for( fieldName in schemaFields ) {
 		fieldData = schemaFields[fieldName];
 		if( fieldData.index ) {
+			if( !/^(integer|float|string|date|time|datetime)$/.test( fieldData.type ) ) {
+				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+			}
 			schemaIndexes.push( fieldName );
 		} else {
 			fieldData.index = false;
@@ -2077,7 +2088,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			schemaFields = this._schemaFields,
 			validOperators = /^(?:>|<|>=|<=|=)$/, operator,
 			indexData = {}, operatorsMapping = {}, operatorsCount, keyRange,
-			fieldValue, parsedValue;
+			fieldData = schemaFields[fieldName], fieldValue, parsedValue;
 		
 		if( this._primaryKey !== fieldName ) {
 			if( this._indexes.indexOf( fieldName ) === -1 ) {
@@ -2091,13 +2102,23 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			indexData.index = fieldName;
 		}
 		
+		// if the field type is date, hence a date object, you can compare equally two date objects
+		// so, converting to a comparator of the type >= and <=
+		fieldValue = comparator['='];
+		if( fieldValue && fieldData.isDate ) {
+			comparator = {
+				'>=': fieldValue,
+				'<=': fieldValue
+			};
+		}
+		
 		for( operator in comparator ) {
 			if( !validOperators.test( operator ) ) {
 				MSQTA._Errors.getByIndexWithRange2( operator );
 			}
 			fieldValue = comparator[operator];
 			parsedValue = this._getValueBySchema( fieldName, fieldValue );
-			if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
+			if( !parsedValue && parsedValue !== fieldData.zero ) {
 				MSQTA._Errors.getByIndexWithRange3( databaseName, schemaName, fieldValue, parsedValue );
 			}
 			operatorsMapping[operator] = parsedValue;
@@ -2105,17 +2126,21 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		operatorsCount = Object.keys( operatorsMapping ).length;
 		
 		if( operatorsCount === 2 ) {
-			if( operatorsMapping['>'] && operatorsMapping['<'] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<'], true, true );
+			try {
+				if( operatorsMapping['>'] && operatorsMapping['<'] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<'], true, true );
+					
+				} else if( operatorsMapping['>='] && operatorsMapping['<='] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<='] );
 				
-			} else if( operatorsMapping['>='] && operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<='] );
-			
-			} else if( operatorsMapping['>'] && operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<='], true, false );
-			
-			} else {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<'], false, true );
+				} else if( operatorsMapping['>'] && operatorsMapping['<='] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<='], true, false );
+				
+				} else {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<'], false, true );
+				}
+			} catch( e ) {
+				MSQTA._Errors.getByIndexWithRange5();
 			}
 			
 		} else if( operatorsCount === 1 ) {
@@ -2129,7 +2154,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<'], true );
 			
 			} else if( operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<='], true );
+				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<='] );
 			
 			} else {
 				keyRange = MSQTA._IDBKeyRange.only( operatorsMapping['='] );

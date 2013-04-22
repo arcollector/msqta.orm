@@ -281,7 +281,7 @@ MSQTA._Schema.IndexedDB = {
 			schemaFields = this._schemaFields,
 			validOperators = /^(?:>|<|>=|<=|=)$/, operator,
 			indexData = {}, operatorsMapping = {}, operatorsCount, keyRange,
-			fieldValue, parsedValue;
+			fieldData = schemaFields[fieldName], fieldValue, parsedValue;
 		
 		if( this._primaryKey !== fieldName ) {
 			if( this._indexes.indexOf( fieldName ) === -1 ) {
@@ -295,13 +295,23 @@ MSQTA._Schema.IndexedDB = {
 			indexData.index = fieldName;
 		}
 		
+		// if the field type is date, hence a date object, you can compare equally two date objects
+		// so, converting to a comparator of the type >= and <=
+		fieldValue = comparator['='];
+		if( fieldValue && fieldData.isDate ) {
+			comparator = {
+				'>=': fieldValue,
+				'<=': fieldValue
+			};
+		}
+		
 		for( operator in comparator ) {
 			if( !validOperators.test( operator ) ) {
 				MSQTA._Errors.getByIndexWithRange2( operator );
 			}
 			fieldValue = comparator[operator];
 			parsedValue = this._getValueBySchema( fieldName, fieldValue );
-			if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
+			if( !parsedValue && parsedValue !== fieldData.zero ) {
 				MSQTA._Errors.getByIndexWithRange3( databaseName, schemaName, fieldValue, parsedValue );
 			}
 			operatorsMapping[operator] = parsedValue;
@@ -309,17 +319,21 @@ MSQTA._Schema.IndexedDB = {
 		operatorsCount = Object.keys( operatorsMapping ).length;
 		
 		if( operatorsCount === 2 ) {
-			if( operatorsMapping['>'] && operatorsMapping['<'] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<'], true, true );
+			try {
+				if( operatorsMapping['>'] && operatorsMapping['<'] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<'], true, true );
+					
+				} else if( operatorsMapping['>='] && operatorsMapping['<='] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<='] );
 				
-			} else if( operatorsMapping['>='] && operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<='] );
-			
-			} else if( operatorsMapping['>'] && operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<='], true, false );
-			
-			} else {
-				keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<'], false, true );
+				} else if( operatorsMapping['>'] && operatorsMapping['<='] ) {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>'], operatorsMapping['<='], true, false );
+				
+				} else {
+					keyRange = MSQTA._IDBKeyRange.bound( operatorsMapping['>='], operatorsMapping['<'], false, true );
+				}
+			} catch( e ) {
+				MSQTA._Errors.getByIndexWithRange5();
 			}
 			
 		} else if( operatorsCount === 1 ) {
@@ -333,7 +347,7 @@ MSQTA._Schema.IndexedDB = {
 				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<'], true );
 			
 			} else if( operatorsMapping['<='] ) {
-				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<='], true );
+				keyRange = MSQTA._IDBKeyRange.upperBound( operatorsMapping['<='] );
 			
 			} else {
 				keyRange = MSQTA._IDBKeyRange.only( operatorsMapping['='] );

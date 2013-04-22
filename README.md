@@ -36,6 +36,9 @@ A schema is like a *table* that holds these objects, and every property name tha
 * array
 * object
 * boolean
+* date
+* time
+* datetime
 
 Every schema *(a table)* are placed into a database, creating the database is the first step that you need to do.
 
