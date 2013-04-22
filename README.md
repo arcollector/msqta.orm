@@ -205,7 +205,7 @@ Retrieves all records where the specified `indexName` that must to refers to a f
 * `rangeData`: an object that its properties name are operators of the types: `>|<|>=|<=|=`, for example, something like this:
 
 ```javascript
-	{ '>': '2010-10-10', '<': 2010-10-31' }
+	{ '>': '2010-10-10', '<': '2010-10-31' }
 ```
 
 Check this example:
@@ -215,7 +215,7 @@ Check this example:
 This says, get all the records where its field/index `date` value falls into the range `date > '2010-10-10'  && date < '2010-10-31'`, thinking in sql this will translate to:
 
 ```sql
-	SELECT * FROM table_name WHERE date > '2010-10-10' AND date < '2010-10-31 
+	SELECT * FROM table_name WHERE date > '2010-10-10' AND date < '2010-10-31'
 ```
 
 ## getAllWithLike
