@@ -94,7 +94,7 @@ A schema is just like a table, to set a schema do this:
 **THIS IS VERY IMPORTANT**: When you change a schema field type, MSQTA.ORM will recast the current values of that field to the new specified type, so in theory you will never lost information, for example if is the previously field type was `string` and now is `integer`, all the current values will casted to `0` or maybe `null` is the property `allowNull` is setted up.
 
 ## CRUDing
-## Putting values on a schema (put)
+## Putting values on a schema (Schema#put)
 This is like doing an `INSERT INTO...` on a speficied schema *(a table)*. To do so, do this:
 ```javascript	
 	schema.put( {
@@ -112,7 +112,7 @@ You can also put multilpes objects *(rows)*, by passing array that contains seve
 ```
 The `callback` will be receibe a param that is the ID of the newly inserted row.
 
-## Setting values on a schema (set)
+## Setting values on a schema (Schema#set)
 This is like a `UPDATE table SET col = value WHERE id = 1`.
 
 To do so, do this:
@@ -139,7 +139,7 @@ You can also set *(update)* multiple objects *(rows)* at a single call, by passi
 
 The `callback` will be receibe a param that is the count of affected rows.
 
-## Deleting on a schema (del)
+## Deleting on a schema (Schema#del)
 This is like a `DELETE FROM table WHERE id = 1`, **just know that you can only delete by a primary key value!**
 
 To delete an object *(row)* do this:
@@ -154,7 +154,7 @@ You can also delete various objects *(rows)* at a single call by passing an arra
 
 The `callback` will be receibe a param that is the count of affected rows.
 
-## Truncating on a schema (empty)
+## Truncating on a schema (Schema#empty)
 This is like a `TRUNCATE TABLE table`.
 
 To do so, do this:
@@ -162,7 +162,7 @@ To do so, do this:
 	schema.empty( [callback], [context] );
 ```
 
-## Deleting a schema (destroy)
+## Deleting a schema (Schema#destroy)
 This is like a `DROP TABLE table`.
 
 To do so, do this:
@@ -172,13 +172,13 @@ To do so, do this:
 **Just know that also the schema instance will be dimmed!**
 
 ## Quering
-## getAll
+## Schema#getAll
 Retrieves all records.
 ```javascript	
 	schema.getAll( [callback], [context] );
 ```
 
-## get 
+## Schema#get 
 Retrieves all records that have any of its fields values equals to `searchValue`.
 ```javascript	
 	schema.get( searchValue, [callback], [context] );
@@ -186,7 +186,7 @@ Retrieves all records that have any of its fields values equals to `searchValue`
 
 * `searchValue`: a string used to do the comparsion.
 
-## getByIndex
+## Schema#getByIndex
 Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value is equals to `searchValue`.
 ```javascript	
 	schema.getByIndex( indexName, searchValue, [ callback ], [ context ] );
@@ -195,7 +195,7 @@ Retrieves all records where the specified `indexName` that must to refers to a f
 * `indexName`: a string that referes to field that must be also an index or the primary key.
 * `searchValue`: can be a string OR an array with multiple strings used to do the comparsion.
 
-## getByIndexWithRange
+## Schema#getByIndexWithRange
 Retrieves all records where the specified `indexName` that must to refers to a field that also must be an index where its value falls in the specified range.
 ```javascript	
 	schema.getByIndex( indexName, rangeData, [ callback ], [ context ] );
@@ -218,7 +218,7 @@ This says, get all the records where its field/index `date` value falls into the
 	SELECT * FROM table_name WHERE date > '2010-10-10' AND date < '2010-10-31'
 ```
 
-## getAllWithLike
+## Schema#getAllWithLike
 Retrieves all records where any of its fields are like the specified one, this like using the `LIKE %string%` operator from the sql standard.
 ```javascript
 	schema.getAllWithLike( fieldsName, likeData, [ callback ], [ context ] );
@@ -243,7 +243,7 @@ Thinking in sql, this will translate to:
 	SELECT * FROM table_name WHERE name LIKE "doe%"
 ```
 	
-## getByCallback
+## Schema#getByCallback
 Retrieves all records that sastifies wherever you do in `filterCallback`
 
 ```javascript
@@ -251,6 +251,23 @@ Retrieves all records that sastifies wherever you do in `filterCallback`
 ```
 
 * `filterCallback`: will receibe at every iteration of the results set that MSQTA.ORM is currently processing, the current record, you only has to return `true` or `false`, to tells to MSQTA.ORM that this record must be part of the final results set or not.
+
+## Database methods
+## Database#destroy
+Use these method to destroy a database, this only works on a IndexedDB implementation, it does not supported by WebSQL. Also note, that the ORM instance will be dimmed aswell.
+```javascript
+	db.destroy( [callback], [context] );
+```
+
+#Database#batch
+Very useful method, use to wrapped out severals CRUD operations (`put`, `set` and `del`) in differents schemas that conforms the database, in a single call.
+```javascript
+	db.batch( data, [callback], [context] );
+```
+`data` is an object that contains the following setup:
+* `schema`: an instance of a database schema, the one that you get with `new db.Schema()`
+* `type`: a string that dictates the schema operation type: `put`, `set` or `del`
+* `data`: an object that will be submitted to the `put`, `set` and `del` methods, this is the first param of all these method, please refers to its corresponding explications to know how this object must be conformed.
 
 Limitations
 ==========
