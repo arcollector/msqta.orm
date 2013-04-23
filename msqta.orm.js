@@ -643,7 +643,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	var databaseName = ORM._name,
 		schemaName = schemaDefinition.name;
 	
-	if( ORM._Schemas[schemaName] ) {
+	if( ORM._Schemas[schemaName] && !options.forceDestroy ) {
 		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
 	}
 	

@@ -204,7 +204,7 @@ MSQTA._ORM.WebSQL = {
 		this._isWaiting = false;
 		// comes from _error()
 		if( !results ) {
-			results = false;
+			queryData.returnValue = false;
 		}
 		
 		// still more processing (only select clauses falls here)
