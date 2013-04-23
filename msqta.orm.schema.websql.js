@@ -214,17 +214,17 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			newSchema = this._createTableQuery,
 			schemaName = this._name,
-			tempschemaName = schemaName + (+new Date()),
+			tempSchemaName = schemaName + (+new Date()),
 			// based on the newSchema we need to create in a form a backup, and the end we just will rename it
-			createTempTableQuery = newSchema.replace( 'CREATE TABLE "' + schemaName + '"', 'CREATE TABLE "' + tempschemaName + '"' );
+			createTempTableQuery = newSchema.replace( 'CREATE TABLE "' + schemaName + '"', 'CREATE TABLE "' + tempSchemaName + '"' );
 
 		// prepare the offset for the step2
 		this._offset = 0;
-		// and tempschemaName too
-		this._tempSchemaName = tempschemaName;
+		// and tempSchemaName too
+		this._tempSchemaName = tempSchemaName;
 		
 		if( this.devMode ) {
-			console.log( '\t\t1) Creating table "' + tempschemaName + '" (this will be the new one at the end of the process)' );
+			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
 		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isInternal: true } );
@@ -233,7 +233,7 @@ MSQTA._Schema.WebSQL = {
 	_updateSchema2: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
-			tempschemaName = this._tempSchemaName,
+			tempSchemaName = this._tempSchemaName,
 			offset = this._offset,
 			selectQuery,
 			// this is already the new schema
@@ -241,7 +241,7 @@ MSQTA._Schema.WebSQL = {
 		
 		// this is case that any error ocurr here we can restore, this is because
 		// this porces is not enclosed in a transaction
-		this._queryErrorID = ORM._addQueryError( 'DROP TABLE ' + tempschemaName );
+		this._queryErrorID = ORM._addQueryError( 'DROP TABLE ' + tempSchemaName );
 		
 		// get all the records from the table with the oldSchema
 		selectQuery = 'SELECT * FROM ' + schemaName + ' LIMIT ' + offset + ', 500';		
@@ -257,14 +257,20 @@ MSQTA._Schema.WebSQL = {
 			// this is already the new schema
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
-			tempschemaName = this._tempSchemaName,
+			tempSchemaName = this._tempSchemaName,
 			rows = results.rows,
 			rowData, fieldName,
 			schemaColData,
 			insertQueryCols = [],
-			insertQueryValues = [], newValues = [],
-			insertQueries = [],
-			i, l;
+			// holds the values to be passed to new schema
+			curValueTokens, 
+			// holds here the new values of the columns
+			newValueTokens = [], newValueReplacements = [],
+			insertQueries = [], 
+			// holds here the replacements
+			values = [], t,
+			i, l,
+			queryData;
 		
 		if( !results ) {
 			throw Error( 'MSQTA.ORM: fatal error on "' + schemaName + '", you have to destroy this schema to continue, use the set the param "forceDestroy" when you create this schema in your code to recreate this schema, everything will be lost!' );
@@ -291,52 +297,67 @@ MSQTA._Schema.WebSQL = {
 			schemaColData = schemaFields[fieldName];
 			if( insertQueryCols.indexOf( fieldName ) === -1 ) {
 				insertQueryCols.push( fieldName );
-				newValues.push( schemaColData.zero );
+				newValueReplacements.push( schemaColData.zero );
+				newValueTokens.push( '?' );
 			}
 		}
 		
 		for( i = 0, l = rows.length; i < l; i++ ) {
+			t = [];
+			curValueTokens = [];
+			
 			rowData = rows.item( i );
 			for( fieldName in rowData ) {
 				// get how this fieldName has to been in the new schema
 				schemaColData = schemaFields[fieldName];
 				if( schemaColData ) {
+					curValueTokens.push( '?' );
 					if( schemaColData.isJSON ) {
-						insertQueryValues.push( "'" + rowData[fieldName] + "'" );
+						t.push( rowData[fieldName] );
 					} else {
-						insertQueryValues.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
+						t.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
 					}
 				}
 			}
 			
 			// make a row insert values
-			insertQueries.push( 'INSERT INTO ' + tempschemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + insertQueryValues.concat( newValues ).join( ', ' ) + ' )' );
-			insertQueryValues = [];
+			insertQueries.push( 'INSERT INTO ' + tempSchemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + curValueTokens.concat( newValueTokens ).join( ', ' ) + ' )' );
+			// make the replacements (concat the default value of the columns)
+			values.push( t.concat( newValueReplacements ) );
+			
 		}
 		
 		if( self.devMode ) {
-			console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempschemaName + '"' );
+			console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempSchemaName + '"' );
 		}
+		
+		queryData = {
+			query: insertQueries,
+			replacements: values,
+			context: this,
+			isInternal: true
+		};
 		
 		// get for more records
 		if( l === 500 ) {
 			this._offset += 500;
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isInternal: true } );
+			queryData.callback = this._updateSchema2;
 		} else {
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isInternal: true } );
+			queryData.callback = this._updateSchema4;
 		}
+		ORM._transaction( queryData );
 	},
 	
 	_updateSchema4: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			dropQuery = 'DROP TABLE '  + schemaName,
-			tempschemaName = this._tempSchemaName,
-			renameQuery = 'ALTER TABLE ' + tempschemaName + ' RENAME TO ' + schemaName;
+			tempSchemaName = this._tempSchemaName,
+			renameQuery = 'ALTER TABLE ' + tempSchemaName + ' RENAME TO ' + schemaName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t4) Deleting old schema "' + schemaName + '"' );
-			console.log( '\t\t5) Renaming new schema "' + tempschemaName + '" to "' + schemaName + '"' );
+			console.log( '\t\t5) Renaming new schema "' + tempSchemaName + '" to "' + schemaName + '"' );
 		}
 		
 		// i need this, because when you drop a table, automatcally its index are dropped aswell,
