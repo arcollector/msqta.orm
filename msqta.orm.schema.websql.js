@@ -221,7 +221,7 @@ MSQTA._Schema.WebSQL = {
 		// prepare the offset for the step2
 		this._offset = 0;
 		// and tempschemaName too
-		this._tempschemaName = tempschemaName;
+		this._tempSchemaName = tempschemaName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t1) Creating table "' + tempschemaName + '" (this will be the new one at the end of the process)' );
@@ -233,7 +233,7 @@ MSQTA._Schema.WebSQL = {
 	_updateSchema2: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			offset = this._offset,
 			selectQuery,
 			// this is already the new schema
@@ -257,7 +257,7 @@ MSQTA._Schema.WebSQL = {
 			// this is already the new schema
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			rows = results.rows,
 			rowData, fieldName,
 			schemaColData,
@@ -331,7 +331,7 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			dropQuery = 'DROP TABLE '  + schemaName,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			renameQuery = 'ALTER TABLE ' + tempschemaName + ' RENAME TO ' + schemaName;
 		
 		if( this.devMode ) {
@@ -388,7 +388,7 @@ MSQTA._Schema.WebSQL = {
 
 		// clean all
 		ORM._removeQueryError( this._queryErrorID );
-		delete this._tempschemaName;
+		delete this._tempSchemaName;
 		delete this._offset;
 		delete this._queryErrorID;
 		delete this._indexesToDelete;

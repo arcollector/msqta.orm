@@ -3,6 +3,10 @@ var MSQTA = MSQTA || {};
 /***************************************/
 MSQTA._IndexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 MSQTA._IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+if( !MSQTA._IDBTransaction.READ_WRITE || !MSQTA._IDBTransaction.READ_ONLY ) {
+	MSQTA._IDBTransaction.READ_WRITE = 'readwrite';
+	MSQTA._IDBTransaction.READ_ONLY = 'readonly';
+}
 MSQTA._IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
 /***************************************/
 /***************************************/
@@ -53,7 +57,7 @@ MSQTA._Errors = {
 		throw Error( 'MSQTA-ORM: set: comparator value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', fieldValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
 	},
 	set5: function( databaseName, schemaName, fieldName, fieldValue, parsedValue ) {
-		 throw Error( 'MSQTA-ORM: set: new value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', parsedValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: set: new value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', parsedValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
 	},
 	del1: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: del: schema "' + schemaName + '" from the "' + databaseName + '" database has not a primary key setted up!' );
@@ -81,7 +85,16 @@ MSQTA._Helpers = {
 	},
 	
 	defaultCallback: function() {
-		console.log( 'MSQTA-ORM: default callback used: results:', arguments[0] );
+		console.log( 'MSQTA-ORM: default callback used' );
+		// is WebSQL
+		if( arguments[1] && arguments[1].rows ) {
+			var rows = arguments[1].rows, i = 0, l = rows.length;
+			for( ; i < l; i++ ) {
+				console.log( rows.item( i ) );
+			}
+		} else {
+			console.log( arguments[0] );
+		}
 	},
 	
 	webSQLSize: 2 * 1024 * 1024,
@@ -114,7 +127,7 @@ MSQTA._Helpers = {
 		return new Date( d[0], d[1]-1, d[2], 0, 0, 0, 0 );
 	},
 	
-	castTime: function( value ) {
+	castDate: function( value ) {
 		var d = new Date(),
 			t = value.split( ':' );
 		
@@ -253,13 +266,13 @@ MSQTA._Helpers = {
 	},
 	
 	webSQLZeros: {
-		string: '""',
+		string: '',
 		integer: 0,
-		object: '"{}"',
-		array: '"[]"',
-		date: '"0000-00-00"',
-		time: '"00:00:00"',
-		datetime: '"0000-00-00 00:00:00"',
+		object: '{}',
+		array: '[]',
+		date: '0000-00-00',
+		time: '00:00:00',
+		datetime: '0000-00-00 00:00:00',
 		float: 0,
 		boolean: 0
 	},
@@ -299,7 +312,7 @@ MSQTA._Helpers = {
 		// now reset the schema for a more easy usage
 		schemaFieldData = this._schemaFields[fieldName];
 		// used when no values are specified to this col
-		schemaFieldData.zero = allowNull ? ( implementation === 'webSQL' ? 'null' : null ) : dataTypeZeros[type];
+		schemaFieldData.zero = allowNull ? ( implementation === 'webSQL' ? null : null ) : dataTypeZeros[type];
 		// sanitizer function
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
 		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
@@ -342,7 +355,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	},
 	
 	sanitizeString: function( value, onZero ) {
-		return value ? '"' + ( value + '' ).replace( /"/g, '\\"' ) + '"' : onZero;
+		return value || onZero;
 	},
 	
 	sanitizeInt: function( value, onZero ) {
@@ -355,24 +368,24 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( value instanceof Date && +value >= 0 ) {
 			m = value.getMonth() + 1;
 			d = value.getDate();
-			return '"' + value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + '"';
+			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
 		} 
 		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + '"';
+		return m[1];
 	},
 	
 	sanitizeTime: function( value, onZero ) {
 		if( value instanceof Date && +value >= 0 ) {
-			return '"' + value.toTimeString().substring( 0, 8 ) + '"';
+			return value.toTimeString().substring( 0, 8 );
 		}
 		var m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + ( m[2] || ':00' ) + '"';
+		return m[1] + ( m[2] || ':00' );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
@@ -380,13 +393,13 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( value instanceof Date && +value >= 0 ) {
 			m = value.getMonth() + 1;
 			d = value.getDate();
-			return '"' + value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 ) + '"';
+			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 );
 		}
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?:(:\d{2})[^Z]+Z|(:\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + ' ' + m[2] + ( m[3] || m[4] || ':00' ) + '"';
+		return m[1] + ' ' + m[2] + ( m[3] || m[4] || ':00' );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
@@ -407,7 +420,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		}
 		
 		try {
-			return "'" + JSON.stringify( value ) + "'";
+			return JSON.stringify( value );
 		} catch( e ) {
 			return onZero;
 		}
@@ -436,7 +449,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	
 	sanitizeGeneric: function( value ) {
 		return value;
-	},	
+	}
 };
 /***************************************/
 MSQTA._Helpers.IndexedDBSanitizers = {
@@ -634,7 +647,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	var databaseName = ORM._name,
 		schemaName = schemaDefinition.name;
 	
-	if( ORM._Schemas[schemaName] ) {
+	if( ORM._Schemas[schemaName] && !options.forceDestroy ) {
 		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
 	}
 	
@@ -1459,7 +1472,7 @@ MSQTA._ORM.IndexedDB = {
 		} else {
 			req = this._openUserDatabase(); 
 			req.onsuccess = function( e ) {
-				var db = e.target.result
+				var db = e.target.result,
 					type = q.type,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
 					objectStore = transaction.objectStore( schemaName );
@@ -1497,7 +1510,6 @@ MSQTA._ORM.IndexedDB = {
 		var self = this,
 			objectStore = queryData.objectStore,
 			datas = queryData.data,
-		
 			currentIndex = 0,
 			totalQueries = datas.length;
 		
@@ -1522,7 +1534,7 @@ MSQTA._ORM.IndexedDB = {
 			};
 			
 			req.onerror = function( e ) {
-				next( null );
+				next( false );
 			};
 		};
 		
@@ -1536,13 +1548,13 @@ MSQTA._ORM.IndexedDB = {
 			indexes = queryData.indexes,
 			pk = queryData.primaryKey,
 		
-			affectedRows = 0,
+			rowsAffected = 0,
 			
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 			
 			} else {
 				// update the data
@@ -1562,21 +1574,25 @@ MSQTA._ORM.IndexedDB = {
 				objectStore.get( targetPk ).onsuccess = function( e ) {
 					var record = e.target.result,
 						req;
-					// update the record
-					for( fieldName in setData ) {
-						record[fieldName] = setData[fieldName];
-					}
-					
-					req = objectStore.put( record );
-					req.onsuccess = function( e ) {
-						if( e.target.result ) {
-							affectedRows++;
+					if( record ) {
+						// update the record
+						for( fieldName in setData ) {
+							record[fieldName] = setData[fieldName];
 						}
+					
+						req = objectStore.put( record );
+						req.onsuccess = function( e ) {
+							if( e.target.result ) {
+								rowsAffected++;
+							}
+							next();
+						};
+						req.onerror = function( e ) {
+							next( false );
+						};
+					} else {
 						next();
-					};
-					req.onerror = function( e ) {
-						next( null );
-					};
+					}
 				};
 				
 			} else {
@@ -1604,7 +1620,7 @@ MSQTA._ORM.IndexedDB = {
 							req = cursor.update( record );
 							req.onsuccess = function( e ) {
 								if( e.target.result ) {
-									affectedRows++;
+									rowsAffected++;
 								}
 								cursor.continue();
 							};
@@ -1633,13 +1649,13 @@ MSQTA._ORM.IndexedDB = {
 			datas = queryData.data,
 			pk = queryData.primaryKey,
 		
-			affectedRows = 0,
+			rowsAffected = 0,
 		
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 				
 			} else {
 				// update the data
@@ -1652,7 +1668,7 @@ MSQTA._ORM.IndexedDB = {
 			var data = datas[currentIndex];
 			objectStore.delete( data[pk] ).onsuccess = function( e ) {
 				if( e.target.result ) {
-					affectedRows++;
+					rowsAffected++;
 				}
 				next();
 			};
@@ -1663,13 +1679,13 @@ MSQTA._ORM.IndexedDB = {
 	
 	_empty: function( queryData ) {
 		var self = this,
-			affectedRows,
+			rowsAffected,
 			objectStore = queryData.objectStore;
 		
 		objectStore.count().onsuccess = function( e ) {
-			affectedRows = e.target.result;
+			rowsAffected = e.target.result;
 			objectStore.clear().onsuccess = function( e ) {
-				self._done( queryData, affectedRows );
+				self._done( queryData, rowsAffected );
 			};
 		};
 	},
@@ -1736,7 +1752,7 @@ MSQTA._ORM.IndexedDB = {
 			batchData;
 		
 		if( !( data instanceof Array ) || !data.length ) {
-			MSQTA._Errors.batch1( databaseName, data )
+			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
 		if( typeof callback !== 'function' ) {
@@ -1780,13 +1796,10 @@ MSQTA._ORM.IndexedDB = {
 				MSQTA._Errors.batch3( type );
 			}
 
-			this._queries = this._queries.concat( { 
-				schema: Schema._name, 
-				type: type, 
-				data: Schema[type]( queryData.data ),
-				callback: MSQTA._Helpers.noop,
-				context: window
-			} );
+			t = Schema[type]( queryData.data );
+			t.callback = MSQTA._Helpers.defaultCallback;
+			t.context = window;
+			this._queries.push( t );
 		}
 		// the last one will the return point
 		t = this._queries[this._queries.length-1];
@@ -1806,7 +1819,7 @@ MSQTA._ORM.IndexedDB = {
 		}
 		
 		this._deleteUserDatabase( callback, context );
-	},
+	}
 };
 MSQTA._Schema.IndexedDB = {
 	
@@ -1862,7 +1875,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback, 
 			comparator: fieldMapping,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 	
@@ -1882,7 +1895,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback, 
 			comparator: null,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 
@@ -1964,7 +1977,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback,
 			comparator: null,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 	
@@ -2233,7 +2246,8 @@ MSQTA._Schema.IndexedDB = {
 			fields = this._fieldsName, fieldName,
 			pk = this._primaryKey,
 			schemaName = this._name,
-			data, i, l, k, m = fields.length;
+			data, i, l, k, m = fields.length,
+			queryData;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -2244,22 +2258,27 @@ MSQTA._Schema.IndexedDB = {
 			for( k = 0; k < m; k++ ) {
 				fieldName = fields[k];
 				data[fieldName] = this._getValueBySchema( fieldName, data[fieldName] );
+			}
+			// lets the auto_increment works automatically if an id is not bee supplied
+			if( data[pk] <= 0 ) {
 				delete data[pk];
 			}
 		}
 
-		if( ORM._isBatchMode ) {
-			return datas;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'put',
 			schema: schemaName,
-			
+			primaryKey: pk,
 			data: datas,
 			callback: userCallback,
 			context: userContext
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	set: function( setDatas, userCallback, userContext ) {
@@ -2271,7 +2290,8 @@ MSQTA._Schema.IndexedDB = {
 			cmpFields, newValues,
 			fieldName, fieldValue,
 			whereClause = {}, setClause = {},
-			queries = [], i, l;
+			queries = [], i, l,
+			queryData;
 		
 		if( !setDatas || typeof setDatas !== 'object' ) {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
@@ -2326,19 +2346,21 @@ MSQTA._Schema.IndexedDB = {
 			whereClause = {};
 		}
 		
-		if( ORM._isBatchMode ) {
-			return queries;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'set',
 			schema: schemaName,
 			indexes: this._indexes,
 			primaryKey: this._primaryKey,
 			data: queries,
 			callback: userCallback,
-			context: userContext
-		} );
+			context: userContext	
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	del: function( ids, userCallback, userContext ) {
@@ -2348,7 +2370,8 @@ MSQTA._Schema.IndexedDB = {
 			schemaName = this._name,
 			id, parsedValue, 
 			t, whereClause = [],
-			i, l;
+			i, l,
+			queryData;
 		
 		if( !pk ) {
 			MSQTA._Errors.del1( databaseName, schemaName );
@@ -2373,20 +2396,21 @@ MSQTA._Schema.IndexedDB = {
 			whereClause.push( t );
 		}
 		
-		// the only way that whereClause can be empty is that ids param must be a empty []
-		if( ORM._isBatchMode ) {
-			return whereClause;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'del',
 			schema: schemaName,
 			primaryKey: pk,
-			
 			data: whereClause,
 			callback: userCallback,
 			context: userContext
-		} );
+		};
+		
+		// the only way that whereClause can be empty is that ids param must be a empty []
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	destroy: function( userCallback, userContext ) {
@@ -2472,6 +2496,7 @@ MSQTA._ORM.WebSQL = {
 	_initSchema: function( Schema ) {
 		this._schemasToInit.push( Schema );
 		if( !this._isBlocked ) {
+			this._isBlocked = true;
 			this._initSchemas();
 		}
 	},
@@ -2492,7 +2517,7 @@ MSQTA._ORM.WebSQL = {
 		this._isBlocked = false;
 	},
 	
-	_saveSchemaOnTestigoDatabase: function( callback, context ) {
+	_saveSchemaOnTestigoDatabase: function( callback, context, arg ) {
 		var self = this,
 			databaseName = this._name,
 			schemasDefinition = this._schemasDefinition;
@@ -2500,10 +2525,10 @@ MSQTA._ORM.WebSQL = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: saving schema definition in the testigo database to keep tracking future changes on it' );
 		}
-		
 		this._testigoDB.transaction( function( tx ) {
 			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')', [], function() {
-				callback.call( context );
+				// true for success
+				callback.call( context, arg );
 			} );
 		} );
 	},
@@ -2516,9 +2541,10 @@ MSQTA._ORM.WebSQL = {
 		var schemaName = Schema._name;
 		
 		delete this._Schemas[schemaName];
+		delete this._schemasDefinition[schemaName];
 		MSQTA._Helpers.dimSchemaInstance( Schema );
 	
-		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext );
+		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
 	},
 	
 	/**
@@ -2560,23 +2586,43 @@ MSQTA._ORM.WebSQL = {
 			return;
 		}
 		this._isWaiting = true;
-		
+
 		this._transaction2( queryData );
 	},
 	
 	_transaction2: function( queryData ) {
 		// save a refenrece for when the transaction is done
 		this._lastQuery = queryData;
-		
+
 		// save a reference used in the success and error functions
 		var self = this,
+			// update an update at time is executed, so we need to keep tracking manually
+			// the affected rows
+			rowsAffected = 0,
 			query = queryData.query;
 		
 		if( !( query instanceof Array ) ) {
 			query = [ query ];
 		}
 		
+		// when you trigger multiple update queries, we need to keep
+		// track the rows affected in the operation
+		var noop = queryData.isUpdate ? function( tx, results ) {
+			rowsAffected += results.rowsAffected;
+		} : MSQTA._Helpers.noop;
+		
 		var success = function( tx, results ) {
+			if( queryData.isUpdate ) {
+				// sum the last executed one
+				queryData.returnValue = results.rowsAffected + rowsAffected;
+		
+			} else if( queryData.isInsert ) {
+				queryData.returnValue = results.insertId;
+			
+			} else if( queryData.isDelete ) {
+				queryData.returnValue = results.rowsAffected;
+			}
+		
 			self._results( results );
 		};
 		
@@ -2593,7 +2639,7 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, [], !l ? success : MSQTA._Helpers.noop, error );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, error );
 			}
 		} );
 	},
@@ -2607,7 +2653,7 @@ MSQTA._ORM.WebSQL = {
 		this._isWaiting = false;
 		// comes from _error()
 		if( !results ) {
-			results = false;
+			queryData.returnValue = false;
 		}
 		
 		// still more processing (only select clauses falls here)
@@ -2618,7 +2664,7 @@ MSQTA._ORM.WebSQL = {
 		// get back with the user
 		} else {
 			// only delete, update, insert quries falls here
-			queryData.userCallback.call( queryData.userContext, queryData.isInsert ? results.insertId : results.rowsAffected );
+			queryData.userCallback.call( queryData.userContext, queryData.returnValue );
 		}
 		
 		this._continue();
@@ -2629,7 +2675,7 @@ MSQTA._ORM.WebSQL = {
 			// more queries to be executed in the queue
 			if( this._queriesInternal.length ) {
 				this._transaction( this._queriesInternal.shift() );
-			} else if( this._queries.length ) {
+			} else if( this._queries.length && !this._isBlocked ) {
 				this._transaction( this._queries.shift() );
 			}
 		}
@@ -2685,12 +2731,12 @@ MSQTA._ORM.WebSQL = {
 				MSQTA._Errors.batch3( type );
 			}
 			// save the queries
-			this._queries = this._queries.concat( { query: Schema[type]( queryData.data ) } );
+			this._queries.push( Schema[type]( queryData.data ) );
 		}
 		// the last one will the return point
 		var t = this._queries[this._queries.length-1];
-		t.callback = batchData.callback;
-		t.context = batchData.context;
+		t.userCallback = batchData.callback;
+		t.userContext = batchData.context;
 		
 		this._isBatchMode = false;
 		
@@ -2712,7 +2758,7 @@ MSQTA._ORM.WebSQL = {
 		
 		console.error( 'MSQTA: destroy: deleting a database is not implemented in webSQL standard and will never do.\n To delete a database you need to do manually.' );
 		
-		callback.call( context || window );
+		callback.call( context || window, false );
 	},
 /***************************************/
 /***************************************/
@@ -2802,9 +2848,9 @@ MSQTA._Schema.WebSQL = {
 		if( this.forceDestroy ) {
 			this._isSchemaDropped = true;
 			
-			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" ddatabase, then it will recreate again\n\tDROP TABLE ' + schemaName;
+			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -2867,7 +2913,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		var registeredPK = registeredSchemaDefinition.primaryKey,
-			currentPK = currentSchemaDefinition.primaryKey
+			currentPK = currentSchemaDefinition.primaryKey;
 		
 		if( !isNewSchema ) {
 			// chaging/droping the primaryKey required a new schema too
@@ -2934,7 +2980,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		// create the new table
-		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -2948,19 +2994,19 @@ MSQTA._Schema.WebSQL = {
 		// prepare the offset for the step2
 		this._offset = 0;
 		// and tempschemaName too
-		this._tempschemaName = tempschemaName;
+		this._tempSchemaName = tempschemaName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t1) Creating table "' + tempschemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
-		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isQueryInternal: true } );
+		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isInternal: true } );
 	},
 	
 	_updateSchema2: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			offset = this._offset,
 			selectQuery,
 			// this is already the new schema
@@ -2976,7 +3022,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t2) Fetching all rows from old schema "' + schemaName + '" by 500 rows per time' );
 		}
 	
-		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isQueryInternal: true } );
+		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isInternal: true } );
 	},
 	
 	_updateSchema3: function( results ) {
@@ -2984,7 +3030,7 @@ MSQTA._Schema.WebSQL = {
 			// this is already the new schema
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			rows = results.rows,
 			rowData, fieldName,
 			schemaColData,
@@ -3048,9 +3094,9 @@ MSQTA._Schema.WebSQL = {
 		// get for more records
 		if( l === 500 ) {
 			this._offset += 500;
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isQueryInternal: true } );
+			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isInternal: true } );
 		} else {
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isQueryInternal: true } );
+			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isInternal: true } );
 		}
 	},
 	
@@ -3058,7 +3104,7 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			dropQuery = 'DROP TABLE '  + schemaName,
-			tempschemaName = this._tempschemaName,
+			tempschemaName = this._tempSchemaName,
 			renameQuery = 'ALTER TABLE ' + tempschemaName + ' RENAME TO ' + schemaName;
 		
 		if( this.devMode ) {
@@ -3070,7 +3116,7 @@ MSQTA._Schema.WebSQL = {
 		// to avoid this process in _updateSchema5
 		this._isSchemaDropped = true;
 		
-		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isQueryInternal: true } );
+		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema5: function() {
@@ -3100,7 +3146,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( indexQueries.length ) {
-			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isQueryInternal: true } );
+			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isInternal: true } );
 			
 		} else {
 			this._updateSchema6();
@@ -3115,7 +3161,7 @@ MSQTA._Schema.WebSQL = {
 
 		// clean all
 		ORM._removeQueryError( this._queryErrorID );
-		delete this._tempschemaName;
+		delete this._tempSchemaName;
 		delete this._offset;
 		delete this._queryErrorID;
 		delete this._indexesToDelete;
@@ -3147,7 +3193,7 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isQueryInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -3157,20 +3203,22 @@ MSQTA._Schema.WebSQL = {
 			databaseName = ORM._name,
 			schemaName = this._name,
 			selectQuery,
-			whereClause = [];
+			whereClause = [], values = [];
 		
 		if( !searchValue ) {
 			MSQTA._Errors.get( databaseName, schemaName );
 		}
 		
 		for( fieldName in schemaFields ) {
-			whereClause.push( fieldName + ' = ' + this._getValueBySchema( fieldName, searchValue ) );
+			whereClause.push( fieldName + ' = ?' );
+			values.push( this._getValueBySchema( fieldName, searchValue ) );
 		}
 		
 		selectQuery = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
 		
 		ORM._transaction( { 
 			query: selectQuery, 
+			replacements: [ values ],
 			context: this,
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -3229,7 +3277,7 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,	
 			databaseName = ORM._name,
 			schemaName = this._name,
-			selectQuery, whereClause = [],
+			selectQuery, whereClause = [], values = [],
 			fieldValue, parsedValue, i, l;
 		
 		if( this._primaryKey !== fieldName ) {
@@ -3249,7 +3297,8 @@ MSQTA._Schema.WebSQL = {
 		for( i = 0, l = searchValue.length; i < l; i++ ) {
 			fieldValue = searchValue[i];
 			parsedValue = this._getValueBySchema( fieldName, fieldValue );
-			whereClause.push( fieldName + ' = ' + parsedValue );
+			whereClause.push( fieldName + ' = ?' );
+			values.push( parsedValue );
 		}
 		
 		// whereClause can be empty
@@ -3257,7 +3306,8 @@ MSQTA._Schema.WebSQL = {
 		selectQuery = 'SELECT * FROM ' + schemaName + ( whereClause.length ? ' WHERE ' + whereClause.join( ' OR ' ) : '' );
 
 		ORM._transaction( { 
-			query: selectQuery, 
+			query: selectQuery,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -3271,7 +3321,7 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			schemaFields = this._schemaFields,
 			validOperators = /^(?:>|<|>=|<=|=)$/, operator,
-			whereClause = [], fieldValue, parsedValue,
+			whereClause = [], fieldValue, parsedValue, values = [],
 			selectQuery;
 		
 		if( this._primaryKey !== fieldName ) {
@@ -3289,7 +3339,8 @@ MSQTA._Schema.WebSQL = {
 			if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 				MSQTA._Errors.getByIndexWithRange3( databaseName, schemaName, fieldValue, parsedValue );
 			}
-			whereClause.push( fieldName + ' ' + operator + ' ' + parsedValue );
+			whereClause.push( fieldName + ' ' + operator + ' ?' );
+			values.push( parsedValue );
 		}
 		
 		if( !whereClause.length ) {
@@ -3299,7 +3350,8 @@ MSQTA._Schema.WebSQL = {
 		selectQuery = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' AND ' );
 		
 		ORM._transaction( { 
-			query: selectQuery, 
+			query: selectQuery,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -3327,8 +3379,8 @@ MSQTA._Schema.WebSQL = {
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
 			i, l, fieldName,
-			likeType, searchValue;
-			selectAllQueryWithLike, whereClause = [];
+			likeType, searchValue, values = [],
+			selectQueryWithLike, whereClause = [];
 		
 		if( typeof likeData !== 'object' ) {
 			MSQTA._Errors.getWithLike1();
@@ -3341,11 +3393,11 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( likeType === 'both' ) {
-			searchValue = '"%' + searchValue + '%"';
+			searchValue = '%' + searchValue + '%';
 		} else if( likeType === 'start' ) {
-			searchValue = '"' + searchValue + '%"';
+			searchValue = searchValue + '%';
 		} else if( likeType === 'end' ) {
-			searchValue = '"%' + searchValue + '"';
+			searchValue = '%' + searchValue;
 		}
 		
 		if( !( fields instanceof Array ) ) {
@@ -3356,13 +3408,14 @@ MSQTA._Schema.WebSQL = {
 			if( !schemaFields[fieldName] ) {
 				MSQTA._Errors.getWithLike2( databaseName, schemaName, fieldName );
 			}
-			whereClause.push( fieldName + ' LIKE ' + searchValue );
+			whereClause.push( fieldName + ' LIKE ?' );
+			values.push( searchValue );
 		}
-		
-		selectAllQueryWithLike = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
+		selectQueryWithLike = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
 
 		ORM._transaction( { 
-			query: selectAllQueryWithLike, 
+			query: selectQueryWithLike,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -3396,9 +3449,11 @@ MSQTA._Schema.WebSQL = {
 			fields = this._fieldsName, fieldName,
 			schemaName = this._name,
 			insertQueryCols,
-			insertQueryValues,
+			insertQueryValues = [], values,
+			insertQueryValuesTokens,
 			insertQueries = [],
-			data, i, l;
+			data, i, l, k, m = fields.length,
+			queryData;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -3407,31 +3462,32 @@ MSQTA._Schema.WebSQL = {
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
 			insertQueryCols = [];
-			insertQueryValues = [];
-			for( fieldName in data ) {
-				if( fields.indexOf( fieldName ) === -1 ) {
-					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
-				}
+			values = [];
+			insertQueryValuesTokens = [];
+			for( k = 0; k < m; k++ ) {
+				fieldName = fields[k];
 				insertQueryCols.push( fieldName );
-				insertQueryValues.push( this._getValueBySchema( fieldName, data[fieldName] ) );
+				values.push( this._getValueBySchema( fieldName, data[fieldName] ) );
+				insertQueryValuesTokens.push( '?' );
 			}
-			if( !insertQueryCols.length ) {
-				MSQTA._Errors.put2( databaseName, schemaName );
-			}
-			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValues.join( ' , ' ) + ' )' );
+			insertQueryValues.push( values );
+			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
-		if( ORM._isBatchMode ) {
-			return insertQueries;
-		}
-		
-		ORM._transaction( { 
-			query: insertQueries, 
+		queryData = { 
+			query: insertQueries,
+			replacements: insertQueryValues,
 			userCallback: userCallback, 
 			userContext: userContext,
 			// need it to get the lastID
 			isInsert: true
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._transaction( queryData );
 	},	
 /***************************************/
 	/*
@@ -3455,9 +3511,11 @@ MSQTA._Schema.WebSQL = {
 			whereData, setData,
 			cmpFields, newValues,
 			fieldName, fieldValue,
-			whereClause = [],
-			setClause = [],
-			queries = [], i, l;
+			whereClause,
+			setClause,
+			values = [], t,
+			queries = [], i, l,
+			queryData;
 		
 		if( !setDatas || typeof setDatas !== 'object' ) {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
@@ -3469,6 +3527,10 @@ MSQTA._Schema.WebSQL = {
 		
 		for( i = 0, l = setDatas.length; i < l; i++ ) {
 			setData = setDatas[i];
+			
+			t = [];
+			setClause = [];
+			whereClause = [];
 			
 			if( !setData.data || typeof setData.data !== 'object' || !Object.keys( setData.data ).length ) {
 				MSQTA._Errors.set2( databaseName, schemaName, setData.data );
@@ -3483,18 +3545,6 @@ MSQTA._Schema.WebSQL = {
 				setData.target = [];
 			}
 			
-			cmpFields = setData.target;
-			// check cmpFields validity
-			for( fieldName in cmpFields ) {
-				fieldValue = cmpFields[fieldName];
-				parsedValue = this._getValueBySchema( fieldName, fieldValue );
-				if( !parsedValue ) {
-					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
-				}
-				whereClause.push( fieldName + ' = ' + parsedValue );
-			}
-			// whereClause can be empty
-			
 			newValues = setData.data;
 			// check newValues validity
 			for( fieldName in newValues ) {
@@ -3503,24 +3553,40 @@ MSQTA._Schema.WebSQL = {
 				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 					MSQTA._Errors.set5( databaseName, schemaName, fieldName, fieldValue, parsedValue );
 				}
-				setClause.push( fieldName + ' = ' + parsedValue );
+				setClause.push( fieldName + ' = ?' );
+				t.push( parsedValue );
 			}
 			
-			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			cmpFields = setData.target;
+			// check cmpFields validity
+			for( fieldName in cmpFields ) {
+				fieldValue = cmpFields[fieldName];
+				parsedValue = this._getValueBySchema( fieldName, fieldValue );
+				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
+					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
+				}
+				whereClause.push( fieldName + ' = ?' );
+				t.push( parsedValue );
+			}
+			// whereClause can be empty
 			
-			setClause = [];
-			whereClause = [];
+			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			values.push( t );
 		}
 		
-		if( ORM._isBatchMode ) {
-			return queries;
-		}
-		
-		ORM._transaction( { 
-			query: queries, 
+		queryData = { 
+			query: queries,
+			replacements: values,
+			isUpdate: true,
 			userCallback: userCallback, 
 			userContext: userContext 
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+
+		ORM._transaction( queryData );
 	},
 /***************************************/
 	del: function( ids, userCallback, userContext ) {
@@ -3530,7 +3596,8 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			id, parsedValue, 
 			deleteQuery, whereClause = [],
-			i, l;
+			i, l,
+			queryData;
 		
 		if( !pk ) {
 			MSQTA._Errors.del1( databaseName, schemaName );
@@ -3558,16 +3625,18 @@ MSQTA._Schema.WebSQL = {
 		
 		deleteQuery = 'DELETE FROM ' + schemaName + ( whereClause.length ? ' WHERE ' + whereClause.join( ' OR ' ) : '' );
 		
-		if( ORM._isBatchMode ) {
-			return [ deleteQuery ];
-		}
-		
-		ORM._transaction( { 
+		queryData = { 
 			query: deleteQuery,
-			primaryKey: pk,
+			isDelete: true,
 			userCallback: userCallback, 
 			userContext: userContext 
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._transaction( queryData );
 	},
 /***************************************/
 	destroy: function( userCallback, userContext ) {
@@ -3598,7 +3667,8 @@ MSQTA._Schema.WebSQL = {
 			deleteQuery = 'DELETE FROM ' + schemaName;
 
 		ORM._transaction( { 
-			query: deleteQuery, 
+			query: deleteQuery,
+			isDelete: true,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );

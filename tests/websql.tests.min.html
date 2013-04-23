@@ -1,0 +1,508 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>MSQTA.ORM - WebSQL Implementation Tests</title>
+		<script src="../release/msqta.orm-0.0.1.min.js"></script>
+		<script src="qunit-git.js"></script>
+		<link href="qunit-git.css" rel="stylesheet">
+	</head>
+	<body>
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script>
+		// globals
+		var db, schema, dbOptions = {
+			name: 'test.db',
+			devMode: true,
+			prefered: 'webSQL'
+		};
+		var tests = [], i = 0;
+		
+		next = function() {
+			if( tests[i] ) {
+				tests[i]();
+				i++;
+			}
+		};
+
+		tests.push( function() {
+			asyncTest( 'Creating/opening a database', function() {
+				db = MSQTA.ORM( dbOptions, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Creating an schema but before dropping the schema', 1, function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						age: { type: 'integer', index: true },
+						date: { type: 'date', index: true },
+						comments: { type: 'string' }
+					},
+					primaryKey: 'id'
+				}, { 
+					forceDestroy: true, 
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+					
+						next();
+					}
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Putting an object into the new schema (schema#put)', 1, function() {
+				schema.put( { name: 'El Holy es hermoso', age: 21, date: '1987-11-11' }, function( lastID ) {
+					// check if the new id is === 1
+					equal( lastID, 1 );
+					start();
+					
+					next();
+				} )
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Putting more objects into the new schema (schema#put)', 1, function() {
+				schema.put( [ 
+					{ name: 'I-van el trolazo', age: 21, date: '1988-10-10' },
+					{ name: 'El tragasable', age: 19, date: '1977-10-10' },
+					{ name: 'EL virgo', age: 25, date: '1950-10-21' }
+				], function( lastID ) {
+					equal( lastID, 4 );
+					start();
+
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Quering all the records (schema#getAll)', 1, function() {
+				schema.getAll( function( results ) {
+					equal( results.length, 4 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by a search value (schema#get)', 2, function() {
+				schema.get( 'EL virgo', function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.get( 'Eat-lead', function( results ) {
+					equal( results.length, 0 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by index with range using integers (schema#getByIndexWithRange)', function() {
+				schema.getByIndexWithRange( 'age', { '>=': 25 }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'age', { '<=': 19 }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'age', { '>': 25 }, function( results ) {
+					equal( results.length, 0 );
+				} );
+				schema.getByIndexWithRange( 'age', { '<': 19 }, function( results ) {
+					equal( results.length, 0 );
+				} );
+				schema.getByIndexWithRange( 'age', { '>=': 19, '<=': 25 }, function( results ) {
+					equal( results.length, 4 );
+				} );
+				schema.getByIndexWithRange( 'age', { '>': 19, '<=': 25 }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				schema.getByIndexWithRange( 'age', { '>=': 19, '<': 25 }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				schema.getByIndexWithRange( 'age', { '>': 19, '<=': 25 }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				schema.getByIndexWithRange( 'age', { '=': 'Hola' }, function( results ) {
+					equal( results.length, 0 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by index with range using date strings and date objects (schema#getByIndexWithRange)', function() {
+				schema.getByIndexWithRange( 'date', { '>=': '1988-10-10' }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>': '1950-10-20' }, function( results ) {
+					equal( results.length, 4 );
+				} );
+				schema.getByIndexWithRange( 'date', { '<': '1988-10-10' }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				schema.getByIndexWithRange( 'date', { '<=': '1988-10-10' }, function( results ) {
+					equal( results.length, 4 );
+				} );
+				schema.getByIndexWithRange( 'date', { '=': '1987-11-11' }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>=': '1977-10-10', '<=': '1988-10-10' }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>': '1977-10-10', '<': '1988-10-10' }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>': '1977-10-10', '<=': '1988-10-10' }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>=': '1977-10-10', '<': '1988-10-10' }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				// 1987-11-11
+				var d = new Date();
+				d.setFullYear( '1987' ),
+				d.setMonth( '10' );
+				d.setDate( '11' );
+				schema.getByIndexWithRange( 'date', { '=': d }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>': d }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndexWithRange( 'date', { '>=': d }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndexWithRange( 'date', { '<': d }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndexWithRange( 'date', { '<=': d }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				// 1940-10-31
+				var d2 = new Date();
+				d2.setFullYear( 1940 );
+				d2.setMonth( 9 );
+				d2.setDate( 31 );
+				// >= 1940-10-31 && <= 1987-11-11
+				schema.getByIndexWithRange( 'date', { '>=': d2, '<=': d }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				// > 1940-10-31 && < 1987-11-11
+				schema.getByIndexWithRange( 'date', { '>': d2, '<': d }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				// > 1940-10-31 && <= 1987-11-11
+				schema.getByIndexWithRange( 'date', { '>': d2, '<=': d }, function( results ) {
+					equal( results.length, 3 );
+				} );
+				// >= 1940-10-31 && < 1987-11-11
+				schema.getByIndexWithRange( 'date', { '>=': d2, '<': d }, function( results ) {
+					equal( results.length, 2 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering with like (schema#getWithLike)', function() {
+				schema.getWithLike( 'name', { both: 'a' }, function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getWithLike( 'name', { end: 'e' }, function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getWithLike( 'name', { start: 'e' }, function( results ) {
+					equal( results.length, 3 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by index (schema#getByIndex)', function() {
+				schema.getByIndex( 'name', 'El tragasable', function( results ) {
+					equal( results.length, 1 );
+				} );
+				schema.getByIndex( 'name', [ 'El tragasable', 'EL virgo' ], function( results ) {
+					equal( results.length, 2 );
+				} );
+				schema.getByIndex( 'name', [ 'me gusta el pedazo' ], function( results ) {
+					equal( results.length, 0 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Quering by callback (schema#getByCallback)', function() {
+				schema.getByCallback( function( record ) {
+					return true;
+				}, function( results ) {
+					equal( results.length, 4 );
+				} );
+				schema.getByCallback( function( record ) {
+					return record.age > 21;
+				}, function( results ) {
+					equal( results.length, 1 );
+					start();
+					
+					next();
+				} );
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating records (schema#set)', function() {
+				schema.set( { data: { name: 'el trolazo' }, target: { id: 1 } }, function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+				} );
+				schema.set( [ { data: { name: 'el tocabulto' }, target: { id: 1 } }, { data: { age: '32' }, target: { id: 2 } } ], function( rowsAffected ) {
+					equal( rowsAffected, 2 );
+				} );
+				schema.set( { data: { comments: 'soy un trolazo, me gusta el pedazo' }, target: { comments: '' } }, function( rowsAffected ) {
+					equal( rowsAffected, 4 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Deleting records (schema#del)', function() {
+				schema.del( 1, function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+				} );
+				schema.del( [ 2, 3 ], function( rowsAffected ) {
+					equal( rowsAffected, 2 );
+				} );
+				schema.del( [ 50 ], function( rowsAffected ) {
+					equal( rowsAffected, 0 );
+					start();
+					
+					next();
+				} );
+				
+			} )
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Truncating a schema (schema#empty)', function() {
+				schema.empty( function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Dropping a schema (schema#destroy)', function() {
+				schema.destroy( function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating a schema again (new db.Schema)', function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						age: { type: 'integer', index: true },
+						date: { type: 'date', index: true },
+						comments: { type: 'string' }
+					},
+					primaryKey: 'id'
+				}, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+				
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Inserting 50 rows on schema', function() {
+				var i = 0, l = 50;
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				};
+				var putData = [];
+				for( ; i < l; i++ ) {
+					putData.push( { name: getNameClient(), date: new Date() } );
+				}
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 50 );
+					schema.getAll( function( results ) {
+						equal( results.length, l );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing batch mode', function() {
+				expect( 0 );
+				
+				var i = 0, l = 20, ids = [];
+				for( ; i < l; i++ ) {
+					ids.push( ( Math.random() * 100 ).toFixed( 0 ) );
+				}
+				var delData = { data: ids, type: 'del', schema: schema };
+				
+				var setData = [];
+				for( i = 0, l = 10; i < l; i++ ) {
+					setData.push( {
+						data: { age: ( Math.random() * 100 ).toFixed( 0 ), date: new Date() },
+						target: { id: ( Math.random() * 100 ).toFixed( 0 ) }
+					} );
+				}
+				setData = { data: setData, type: 'set', schema: schema };
+				
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				}
+				putData = [];
+				for( i = 0, l = 30; i < l; i++ ) {
+					putData.push( {
+						name: getNameClient(),
+						age: ( Math.random() * 100 ).toFixed( 0 )
+					} );
+				}
+				putData = { data: putData, type: 'put', schema: schema };
+			
+				db.batch( [ delData, setData, putData ], function() {
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating a schema again (new db.Schema) with forceDestroy flag', function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						food: { type: 'array' },
+						capitals: { type: 'object' }
+					},
+					primaryKey: 'id'
+				}, {
+					forceDestroy: true,
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+				
+						next();
+					} 
+				} );
+			} );
+		} );
+		
+		var putData;
+		tests.push( function() {
+			asyncTest( 'Putting values that are arrays and objects on the schema (schema#put)', function() {
+				putData = [
+					{ id: 10, name: 'Filogonio', food: [ 'pizza', 'bananas' ], capitals: { 'Tennessee': 'Nashville', 'Kentucky': 'Frankfort' } },
+					{ id: 20, name: 'Priñio', food: [ 'oranges', 'tomatoes', 'apples' ], capitals: { 'Virginia': 'Richmond', 'North Carolina': 'Raleigh' } },
+					{ id: 30, name: 'Pelopidas', food: [ 'kiwi', 'hamburguer', 'beer' ], capitals: { 'Georgia': 'Atlanta' } }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 30 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Retrieving the newly records (schema#getAll) to test equality', function() {
+				schema.getAll( function( results ) {
+					equal( results.length, 3 );
+					deepEqual( results, putData );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating the object and array fields of a record by id (schema#set)', function() {
+				schema.set( { data: { food: [] }, target: { id: 10 } }, function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+					schema.getByIndex( 'id', 10, function( results ) {
+						deepEqual( results[0].food, [] );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing unique constraints of name field with (schema#set) and (schema#put)', function() {
+				schema.set( { data: { name: 'Priñio' }, target: { id: 10 } }, function( rowsAffected ) {
+					equal( rowsAffected, false );
+					schema.put( { name: 'Pelopidas' }, function( rowsAffected ) {
+						equal( rowsAffected, false );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+
+		next();
+		</script>
+	</body>
+</html>
