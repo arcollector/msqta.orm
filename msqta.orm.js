@@ -81,7 +81,16 @@ MSQTA._Helpers = {
 	},
 	
 	defaultCallback: function() {
-		console.log( 'MSQTA-ORM: default callback used: results:', arguments[0] );
+		console.log( 'MSQTA-ORM: default callback used' );
+		// is WebSQL
+		if( arguments[1] && arguments[1].rows ) {
+			var rows = arguments[1].rows, i = 0, l = rows.length;
+			for( ; i < l; i++ ) {
+				console.log( rows.item( i ) );
+			}
+		} else {
+			console.log( arguments[0] );
+		}
 	},
 	
 	webSQLSize: 2 * 1024 * 1024,
@@ -253,13 +262,13 @@ MSQTA._Helpers = {
 	},
 	
 	webSQLZeros: {
-		string: '""',
+		string: '',
 		integer: 0,
-		object: '"{}"',
-		array: '"[]"',
-		date: '"0000-00-00"',
-		time: '"00:00:00"',
-		datetime: '"0000-00-00 00:00:00"',
+		object: '{}',
+		array: '[]',
+		date: '0000-00-00',
+		time: '00:00:00',
+		datetime: '0000-00-00 00:00:00',
 		float: 0,
 		boolean: 0
 	},
@@ -299,7 +308,7 @@ MSQTA._Helpers = {
 		// now reset the schema for a more easy usage
 		schemaFieldData = this._schemaFields[fieldName];
 		// used when no values are specified to this col
-		schemaFieldData.zero = allowNull ? ( implementation === 'webSQL' ? 'null' : null ) : dataTypeZeros[type];
+		schemaFieldData.zero = allowNull ? ( implementation === 'webSQL' ? null : null ) : dataTypeZeros[type];
 		// sanitizer function
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
 		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
@@ -342,7 +351,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	},
 	
 	sanitizeString: function( value, onZero ) {
-		return value ? '"' + ( value + '' ).replace( /"/g, '\\"' ) + '"' : onZero;
+		return value || onZero;
 	},
 	
 	sanitizeInt: function( value, onZero ) {
@@ -355,24 +364,24 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( value instanceof Date && +value >= 0 ) {
 			m = value.getMonth() + 1;
 			d = value.getDate();
-			return '"' + value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + '"';
+			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
 		} 
 		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + '"';
+		return m[1]
 	},
 	
 	sanitizeTime: function( value, onZero ) {
 		if( value instanceof Date && +value >= 0 ) {
-			return '"' + value.toTimeString().substring( 0, 8 ) + '"';
+			return value.toTimeString().substring( 0, 8 );
 		}
 		var m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + ( m[2] || ':00' ) + '"';
+		return m[1] + ( m[2] || ':00' );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
@@ -380,13 +389,13 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( value instanceof Date && +value >= 0 ) {
 			m = value.getMonth() + 1;
 			d = value.getDate();
-			return '"' + value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 ) + '"';
+			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 );
 		}
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?:(:\d{2})[^Z]+Z|(:\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return '"' + m[1] + ' ' + m[2] + ( m[3] || m[4] || ':00' ) + '"';
+		return m[1] + ' ' + m[2] + ( m[3] || m[4] || ':00' );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
@@ -407,7 +416,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		}
 		
 		try {
-			return "'" + JSON.stringify( value ) + "'";
+			return JSON.stringify( value );
 		} catch( e ) {
 			return onZero;
 		}

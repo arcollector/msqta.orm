@@ -76,7 +76,6 @@ MSQTA._ORM.WebSQL = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: saving schema definition in the testigo database to keep tracking future changes on it' );
 		}
-		
 		this._testigoDB.transaction( function( tx ) {
 			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')', [], function() {
 				// true for success
@@ -93,6 +92,7 @@ MSQTA._ORM.WebSQL = {
 		var schemaName = Schema._name;
 		
 		delete this._Schemas[schemaName];
+		delete this._schemasDefinition[schemaName];
 		MSQTA._Helpers.dimSchemaInstance( Schema );
 	
 		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
@@ -190,7 +190,7 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, [], l ? noop : success, error );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, error );
 			}
 		} );
 	},
@@ -282,12 +282,12 @@ MSQTA._ORM.WebSQL = {
 				MSQTA._Errors.batch3( type );
 			}
 			// save the queries
-			this._queries = this._queries.concat( { query: Schema[type]( queryData.data ) } );
+			this._queries.push( Schema[type]( queryData.data ) );
 		}
 		// the last one will the return point
 		var t = this._queries[this._queries.length-1];
-		t.callback = batchData.callback;
-		t.context = batchData.context;
+		t.userCallback = batchData.callback;
+		t.userContext = batchData.context;
 		
 		this._isBatchMode = false;
 		

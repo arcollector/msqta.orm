@@ -68,6 +68,7 @@
 					// check if the new id is === 1
 					equal( lastID, 1 );
 					start();
+					
 					next();
 				} )
 			} );
@@ -87,7 +88,7 @@
 				} );
 			} );
 		} );
-		
+
 		tests.push( function() {
 			asyncTest( 'Quering all the records (schema#getAll)', 1, function() {
 				schema.getAll( function( results ) {
@@ -326,6 +327,92 @@
 			asyncTest( 'Dropping a schema (schema#destroy)', function() {
 				schema.destroy( function( statusCode ) {
 					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating a schema agian (new db.Schema)', function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						age: { type: 'integer', index: true },
+						date: { type: 'date', index: true },
+						comments: { type: 'string' }
+					},
+					primaryKey: 'id'
+				}, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+				
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Inserting 50 rows on schema', function() {
+				var i = 0, l = 50;
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				};
+				for( ; i < l; i++ ) {
+					schema.put( { name: getNameClient(), date: new Date() } );
+				}
+				schema.getAll( function( results ) {
+					equal( results.length, l );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing batch mode', function() {
+				expect( 0 );
+				
+				var i = 0, l = 20, ids = [];
+				for( ; i < l; i++ ) {
+					ids.push( ( Math.random() * 100 ).toFixed( 0 ) );
+				}
+				var delData = { data: ids, type: 'del', schema: schema };
+				
+				var setData = [];
+				for( i = 0, l = 10; i < l; i++ ) {
+					setData.push( {
+						data: { age: ( Math.random() * 100 ).toFixed( 0 ), date: new Date() },
+						target: { id: ( Math.random() * 100 ).toFixed( 0 ) }
+					} );
+				}
+				setData = { data: setData, type: 'set', schema: schema };
+				
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				}
+				putData = [];
+				for( i = 0, l = 30; i < l; i++ ) {
+					putData.push( {
+						name: getNameClient(),
+						age: ( Math.random() * 100 ).toFixed( 0 )
+					} );
+				}
+				putData = { data: putData, type: 'put', schema: schema };
+			
+				db.batch( [ delData, setData, putData ], function() {
 					start();
 					
 					next();

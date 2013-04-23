@@ -430,20 +430,22 @@ MSQTA._Schema.WebSQL = {
 			databaseName = ORM._name,
 			schemaName = this._name,
 			selectQuery,
-			whereClause = [];
+			whereClause = [], values = [];
 		
 		if( !searchValue ) {
 			MSQTA._Errors.get( databaseName, schemaName );
 		}
 		
 		for( fieldName in schemaFields ) {
-			whereClause.push( fieldName + ' = ' + this._getValueBySchema( fieldName, searchValue ) );
+			whereClause.push( fieldName + ' = ?' );
+			values.push( this._getValueBySchema( fieldName, searchValue ) );
 		}
 		
 		selectQuery = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
 		
 		ORM._transaction( { 
 			query: selectQuery, 
+			replacements: [ values ],
 			context: this,
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -502,7 +504,7 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,	
 			databaseName = ORM._name,
 			schemaName = this._name,
-			selectQuery, whereClause = [],
+			selectQuery, whereClause = [], values = [],
 			fieldValue, parsedValue, i, l;
 		
 		if( this._primaryKey !== fieldName ) {
@@ -522,7 +524,8 @@ MSQTA._Schema.WebSQL = {
 		for( i = 0, l = searchValue.length; i < l; i++ ) {
 			fieldValue = searchValue[i];
 			parsedValue = this._getValueBySchema( fieldName, fieldValue );
-			whereClause.push( fieldName + ' = ' + parsedValue );
+			whereClause.push( fieldName + ' = ?' );
+			values.push( parsedValue );
 		}
 		
 		// whereClause can be empty
@@ -530,7 +533,8 @@ MSQTA._Schema.WebSQL = {
 		selectQuery = 'SELECT * FROM ' + schemaName + ( whereClause.length ? ' WHERE ' + whereClause.join( ' OR ' ) : '' );
 
 		ORM._transaction( { 
-			query: selectQuery, 
+			query: selectQuery,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -544,7 +548,7 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			schemaFields = this._schemaFields,
 			validOperators = /^(?:>|<|>=|<=|=)$/, operator,
-			whereClause = [], fieldValue, parsedValue,
+			whereClause = [], fieldValue, parsedValue, values = [],
 			selectQuery;
 		
 		if( this._primaryKey !== fieldName ) {
@@ -562,7 +566,8 @@ MSQTA._Schema.WebSQL = {
 			if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 				MSQTA._Errors.getByIndexWithRange3( databaseName, schemaName, fieldValue, parsedValue );
 			}
-			whereClause.push( fieldName + ' ' + operator + ' ' + parsedValue );
+			whereClause.push( fieldName + ' ' + operator + ' ?' );
+			values.push( parsedValue );
 		}
 		
 		if( !whereClause.length ) {
@@ -572,7 +577,8 @@ MSQTA._Schema.WebSQL = {
 		selectQuery = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' AND ' );
 		
 		ORM._transaction( { 
-			query: selectQuery, 
+			query: selectQuery,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -600,7 +606,7 @@ MSQTA._Schema.WebSQL = {
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
 			i, l, fieldName,
-			likeType, searchValue,
+			likeType, searchValue, values = [],
 			selectQueryWithLike, whereClause = [];
 		
 		if( typeof likeData !== 'object' ) {
@@ -614,11 +620,11 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( likeType === 'both' ) {
-			searchValue = '"%' + searchValue + '%"';
+			searchValue = '%' + searchValue + '%';
 		} else if( likeType === 'start' ) {
-			searchValue = '"' + searchValue + '%"';
+			searchValue = searchValue + '%';
 		} else if( likeType === 'end' ) {
-			searchValue = '"%' + searchValue + '"';
+			searchValue = '%' + searchValue;
 		}
 		
 		if( !( fields instanceof Array ) ) {
@@ -629,13 +635,14 @@ MSQTA._Schema.WebSQL = {
 			if( !schemaFields[fieldName] ) {
 				MSQTA._Errors.getWithLike2( databaseName, schemaName, fieldName );
 			}
-			whereClause.push( fieldName + ' LIKE ' + searchValue );
+			whereClause.push( fieldName + ' LIKE ?' );
+			values.push( searchValue );
 		}
-		
 		selectQueryWithLike = 'SELECT * FROM ' + schemaName + ' WHERE ' + whereClause.join( ' OR ' );
 
 		ORM._transaction( { 
-			query: selectQueryWithLike, 
+			query: selectQueryWithLike,
+			replacements: [ values ],
 			context: this, 
 			callback: this._processResults, 
 			userCallback: userCallback, 
@@ -669,9 +676,11 @@ MSQTA._Schema.WebSQL = {
 			fields = this._fieldsName, fieldName,
 			schemaName = this._name,
 			insertQueryCols,
-			insertQueryValues,
+			insertQueryValues = [], values,
+			insertQueryValuesTokens,
 			insertQueries = [],
-			data, i, l, k, m = fields.length;
+			data, i, l, k, m = fields.length,
+			queryData;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -680,26 +689,32 @@ MSQTA._Schema.WebSQL = {
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
 			insertQueryCols = [];
-			insertQueryValues = [];
+			values = [];
+			insertQueryValuesTokens = [];
 			for( k = 0; k < m; k++ ) {
 				fieldName = fields[k];
 				insertQueryCols.push( fieldName );
-				insertQueryValues.push( this._getValueBySchema( fieldName, data[fieldName] ) );
+				values.push( this._getValueBySchema( fieldName, data[fieldName] ) );
+				insertQueryValuesTokens.push( '?' );
 			}
-			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValues.join( ' , ' ) + ' )' );
+			insertQueryValues.push( values );
+			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
-		if( ORM._isBatchMode ) {
-			return insertQueries;
-		}
-		
-		ORM._transaction( { 
-			query: insertQueries, 
+		queryData = { 
+			query: insertQueries,
+			replacements: insertQueryValues,
 			userCallback: userCallback, 
 			userContext: userContext,
 			// need it to get the lastID
 			isInsert: true
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._transaction( queryData );
 	},	
 /***************************************/
 	/*
@@ -723,9 +738,11 @@ MSQTA._Schema.WebSQL = {
 			whereData, setData,
 			cmpFields, newValues,
 			fieldName, fieldValue,
-			whereClause = [],
-			setClause = [],
-			queries = [], i, l;
+			whereClause,
+			setClause,
+			values = [], t,
+			queries = [], i, l,
+			queryData;
 		
 		if( !setDatas || typeof setDatas !== 'object' ) {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
@@ -737,6 +754,10 @@ MSQTA._Schema.WebSQL = {
 		
 		for( i = 0, l = setDatas.length; i < l; i++ ) {
 			setData = setDatas[i];
+			
+			t = [];
+			setClause = [];
+			whereClause = [];
 			
 			if( !setData.data || typeof setData.data !== 'object' || !Object.keys( setData.data ).length ) {
 				MSQTA._Errors.set2( databaseName, schemaName, setData.data );
@@ -751,18 +772,6 @@ MSQTA._Schema.WebSQL = {
 				setData.target = [];
 			}
 			
-			cmpFields = setData.target;
-			// check cmpFields validity
-			for( fieldName in cmpFields ) {
-				fieldValue = cmpFields[fieldName];
-				parsedValue = this._getValueBySchema( fieldName, fieldValue );
-				if( !parsedValue ) {
-					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
-				}
-				whereClause.push( fieldName + ' = ' + parsedValue );
-			}
-			// whereClause can be empty
-			
 			newValues = setData.data;
 			// check newValues validity
 			for( fieldName in newValues ) {
@@ -771,25 +780,40 @@ MSQTA._Schema.WebSQL = {
 				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
 					MSQTA._Errors.set5( databaseName, schemaName, fieldName, fieldValue, parsedValue );
 				}
-				setClause.push( fieldName + ' = ' + parsedValue );
+				setClause.push( fieldName + ' = ?' );
+				t.push( parsedValue );
 			}
 			
-			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			cmpFields = setData.target;
+			// check cmpFields validity
+			for( fieldName in cmpFields ) {
+				fieldValue = cmpFields[fieldName];
+				parsedValue = this._getValueBySchema( fieldName, fieldValue );
+				if( !parsedValue && parsedValue !== schemaFields[fieldName].zero ) {
+					MSQTA._Errors.set4( databaseName, schemaName, fieldName, fieldValue, parsedValue );
+				}
+				whereClause.push( fieldName + ' = ?' );
+				t.push( parsedValue );
+			}
+			// whereClause can be empty
 			
-			setClause = [];
-			whereClause = [];
+			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			values.push( t );
 		}
 		
-		if( ORM._isBatchMode ) {
-			return queries;
-		}
-		
-		ORM._transaction( { 
+		queryData = { 
 			query: queries,
+			replacements: values,
 			isUpdate: true,
 			userCallback: userCallback, 
 			userContext: userContext 
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+
+		ORM._transaction( queryData );
 	},
 /***************************************/
 	del: function( ids, userCallback, userContext ) {
@@ -799,7 +823,8 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			id, parsedValue, 
 			deleteQuery, whereClause = [],
-			i, l;
+			i, l,
+			queryData;
 		
 		if( !pk ) {
 			MSQTA._Errors.del1( databaseName, schemaName );
@@ -827,17 +852,18 @@ MSQTA._Schema.WebSQL = {
 		
 		deleteQuery = 'DELETE FROM ' + schemaName + ( whereClause.length ? ' WHERE ' + whereClause.join( ' OR ' ) : '' );
 		
-		if( ORM._isBatchMode ) {
-			return [ deleteQuery ];
-		}
-		
-		ORM._transaction( { 
+		queryData = { 
 			query: deleteQuery,
-			primaryKey: pk,
 			isDelete: true,
 			userCallback: userCallback, 
 			userContext: userContext 
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._transaction( queryData );
 	},
 /***************************************/
 	destroy: function( userCallback, userContext ) {

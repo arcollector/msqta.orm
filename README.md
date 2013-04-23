@@ -84,7 +84,7 @@ A schema is just like a table, to set a schema do this:
 
 ```javascript
 	name_of_the_field(column): { 
-		type: 'string|integer|float|object|array|boolean', // the field type
+		type: 'string|integer|float|object|array|boolean|date|time|datetime', // the field type
 		index: true|false, // use this field as an index? (optional)
 		unique: true|false, // only unique values are permitted? (optional)
 		allowNull: true|false // can i store the null value? (optional)
