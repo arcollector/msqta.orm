@@ -800,7 +800,6 @@ MSQTA._ORM.IndexedDB = {
 		var self = this,
 			objectStore = queryData.objectStore,
 			datas = queryData.data,
-		
 			currentIndex = 0,
 			totalQueries = datas.length;
 		
@@ -825,7 +824,7 @@ MSQTA._ORM.IndexedDB = {
 			};
 			
 			req.onerror = function( e ) {
-				next( null );
+				next( false );
 			};
 		};
 		
@@ -865,21 +864,25 @@ MSQTA._ORM.IndexedDB = {
 				objectStore.get( targetPk ).onsuccess = function( e ) {
 					var record = e.target.result,
 						req;
-					// update the record
-					for( fieldName in setData ) {
-						record[fieldName] = setData[fieldName];
-					}
-					
-					req = objectStore.put( record );
-					req.onsuccess = function( e ) {
-						if( e.target.result ) {
-							rowsAffected++;
+					if( record ) {
+						// update the record
+						for( fieldName in setData ) {
+							record[fieldName] = setData[fieldName];
 						}
+					
+						req = objectStore.put( record );
+						req.onsuccess = function( e ) {
+							if( e.target.result ) {
+								rowsAffected++;
+							}
+							next();
+						};
+						req.onerror = function( e ) {
+							next( false );
+						};
+					} else {
 						next();
-					};
-					req.onerror = function( e ) {
-						next( null );
-					};
+					}
 				};
 				
 			} else {
@@ -1083,13 +1086,10 @@ MSQTA._ORM.IndexedDB = {
 				MSQTA._Errors.batch3( type );
 			}
 
-			this._queries = this._queries.concat( { 
-				schema: Schema._name, 
-				type: type, 
-				data: Schema[type]( queryData.data ),
-				callback: MSQTA._Helpers.noop,
-				context: window
-			} );
+			t = Schema[type]( queryData.data );
+			t.callback = MSQTA._Helpers.defaultCallback;
+			t.context = window;
+			this._queries.push( t );
 		}
 		// the last one will the return point
 		t = this._queries[this._queries.length-1];

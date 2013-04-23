@@ -365,14 +365,18 @@
 					}
 					return str;
 				};
+				var putData = [];
 				for( ; i < l; i++ ) {
-					schema.put( { name: getNameClient(), date: new Date() } );
+					putData.push( { name: getNameClient(), date: new Date() } );
 				}
-				schema.getAll( function( results ) {
-					equal( results.length, l );
-					start();
-					
-					next();
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 50 );
+					schema.getAll( function( results ) {
+						equal( results.length, l );
+						start();
+						
+						next();
+					} );
 				} );
 			} );
 		} );

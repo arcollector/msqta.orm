@@ -423,7 +423,8 @@ MSQTA._Schema.IndexedDB = {
 			fields = this._fieldsName, fieldName,
 			pk = this._primaryKey,
 			schemaName = this._name,
-			data, i, l, k, m = fields.length;
+			data, i, l, k, m = fields.length,
+			queryData;
 		
 		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
 			datas = [ datas ];
@@ -434,22 +435,27 @@ MSQTA._Schema.IndexedDB = {
 			for( k = 0; k < m; k++ ) {
 				fieldName = fields[k];
 				data[fieldName] = this._getValueBySchema( fieldName, data[fieldName] );
+			}
+			// lets the auto_increment works automatically if an id is not bee supplied
+			if( data[pk] <= 0 ) {
 				delete data[pk];
 			}
 		}
 
-		if( ORM._isBatchMode ) {
-			return datas;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'put',
 			schema: schemaName,
-			
+			primaryKey: pk,
 			data: datas,
 			callback: userCallback,
 			context: userContext
-		} );
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	set: function( setDatas, userCallback, userContext ) {
@@ -461,7 +467,8 @@ MSQTA._Schema.IndexedDB = {
 			cmpFields, newValues,
 			fieldName, fieldValue,
 			whereClause = {}, setClause = {},
-			queries = [], i, l;
+			queries = [], i, l,
+			queryData;
 		
 		if( !setDatas || typeof setDatas !== 'object' ) {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
@@ -516,19 +523,21 @@ MSQTA._Schema.IndexedDB = {
 			whereClause = {};
 		}
 		
-		if( ORM._isBatchMode ) {
-			return queries;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'set',
 			schema: schemaName,
 			indexes: this._indexes,
 			primaryKey: this._primaryKey,
 			data: queries,
 			callback: userCallback,
-			context: userContext
-		} );
+			context: userContext	
+		};
+		
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	del: function( ids, userCallback, userContext ) {
@@ -538,7 +547,8 @@ MSQTA._Schema.IndexedDB = {
 			schemaName = this._name,
 			id, parsedValue, 
 			t, whereClause = [],
-			i, l;
+			i, l,
+			queryData;
 		
 		if( !pk ) {
 			MSQTA._Errors.del1( databaseName, schemaName );
@@ -563,20 +573,21 @@ MSQTA._Schema.IndexedDB = {
 			whereClause.push( t );
 		}
 		
-		// the only way that whereClause can be empty is that ids param must be a empty []
-		if( ORM._isBatchMode ) {
-			return whereClause;
-		}
-		
-		ORM._preExec( {
+		queryData = {
 			type: 'del',
 			schema: schemaName,
 			primaryKey: pk,
-			
 			data: whereClause,
 			callback: userCallback,
 			context: userContext
-		} );
+		};
+		
+		// the only way that whereClause can be empty is that ids param must be a empty []
+		if( ORM._isBatchMode ) {
+			return queryData;
+		}
+		
+		ORM._preExec( queryData );
 	},
 /***************************************/
 	destroy: function( userCallback, userContext ) {

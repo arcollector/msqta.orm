@@ -354,6 +354,176 @@
 				} );
 			} );
 		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating a schema again (new db.Schema)', function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						age: { type: 'integer', index: true },
+						date: { type: 'date', index: true },
+						comments: { type: 'string' }
+					},
+					primaryKey: 'id'
+				}, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+				
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Inserting 50 rows on schema', function() {
+				var i = 0, l = 50;
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				};
+				var putData = [];
+				for( ; i < l; i++ ) {
+					putData.push( { name: getNameClient(), date: new Date() } );
+				}
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 50 );
+					schema.getAll( function( results ) {
+						equal( results.length, l );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing batch mode', function() {
+				expect( 0 );
+				
+				var i = 0, l = 20, ids = [];
+				for( ; i < l; i++ ) {
+					ids.push( ( Math.random() * 100 ).toFixed( 0 ) );
+				}
+				var delData = { data: ids, type: 'del', schema: schema };
+				
+				var setData = [];
+				for( i = 0, l = 10; i < l; i++ ) {
+					setData.push( {
+						data: { age: ( Math.random() * 100 ).toFixed( 0 ), date: new Date() },
+						target: { id: ( Math.random() * 100 ).toFixed( 0 ) }
+					} );
+				}
+				setData = { data: setData, type: 'set', schema: schema };
+				
+				var getNameClient = function() {
+					var i = 0, l = 10, str = '';
+					for( ; i < l; i++ ) {
+						str += String.fromCharCode( ( Math.random() * 100 ).toFixed( 0 ) ).trim();
+					}
+					return str;
+				}
+				putData = [];
+				for( i = 0, l = 30; i < l; i++ ) {
+					putData.push( {
+						name: getNameClient(),
+						age: ( Math.random() * 100 ).toFixed( 0 )
+					} );
+				}
+				putData = { data: putData, type: 'put', schema: schema };
+			
+				db.batch( [ delData, setData, putData ], function() {
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating a schema again (new db.Schema) with forceDestroy flag', function() {
+				schema = new db.Schema( {
+					name: 'clients',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', index: true, unique: true },
+						food: { type: 'array' },
+						capitals: { type: 'object' }
+					},
+					primaryKey: 'id'
+				}, {
+					forceDestroy: true,
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+				
+						next();
+					} 
+				} );
+			} );
+		} );
+		
+		var putData;
+		tests.push( function() {
+			asyncTest( 'Putting values that are arrays and objects on the schema (schema#put)', function() {
+				putData = [
+					{ id: 10, name: 'Filogonio', food: [ 'pizza', 'bananas' ], capitals: { 'Tennessee': 'Nashville', 'Kentucky': 'Frankfort' } },
+					{ id: 20, name: 'Priñio', food: [ 'oranges', 'tomatoes', 'apples' ], capitals: { 'Virginia': 'Richmond', 'North Carolina': 'Raleigh' } },
+					{ id: 30, name: 'Pelopidas', food: [ 'kiwi', 'hamburguer', 'beer' ], capitals: { 'Georgia': 'Atlanta' } }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 30 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Retrieving the newly records (schema#getAll) to test equality', function() {
+				schema.getAll( function( results ) {
+					equal( results.length, 3 );
+					deepEqual( results, putData );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating the object and array fields of a record by id (schema#set)', function() {
+				schema.set( { data: { food: [] }, target: { id: 10 } }, function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+					schema.getByIndex( 'id', 10, function( results ) {
+						deepEqual( results[0].food, [] );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing unique constraints of name field with (schema#set) and (schema#put)', function() {
+				schema.set( { data: { name: 'Priñio' }, target: { id: 10 } }, function( rowsAffected ) {
+					equal( rowsAffected, false );
+					schema.put( { name: 'Pelopidas' }, function( rowsAffected ) {
+						equal( rowsAffected, false );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
 
 		next();
 		</script>

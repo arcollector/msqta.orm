@@ -3,6 +3,10 @@ var MSQTA = MSQTA || {};
 /***************************************/
 MSQTA._IndexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 MSQTA._IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+if( !MSQTA._IDBTransaction.READ_WRITE || !MSQTA._IDBTransaction.READ_ONLY ) {
+	MSQTA._IDBTransaction.READ_WRITE = 'readwrite';
+	MSQTA._IDBTransaction.READ_ONLY = 'readonly';
+}
 MSQTA._IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
 /***************************************/
 /***************************************/
