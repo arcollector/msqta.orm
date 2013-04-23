@@ -53,7 +53,7 @@ MSQTA._Errors = {
 		throw Error( 'MSQTA-ORM: set: comparator value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', fieldValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
 	},
 	set5: function( databaseName, schemaName, fieldName, fieldValue, parsedValue ) {
-		 throw Error( 'MSQTA-ORM: set: new value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', parsedValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: set: new value "' + fieldValue + '" of the field "' + fieldName + '" has been casted to a non-value:', parsedValue, ' on "' + schemaName + '" from the "' + databaseName + '" database!' );
 	},
 	del1: function( databaseName, schemaName ) {
 		throw Error( 'MSQTA-ORM: del: schema "' + schemaName + '" from the "' + databaseName + '" database has not a primary key setted up!' );
@@ -370,7 +370,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( !m ) {
 			return onZero;
 		}
-		return m[1]
+		return m[1];
 	},
 	
 	sanitizeTime: function( value, onZero ) {
@@ -445,7 +445,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	
 	sanitizeGeneric: function( value ) {
 		return value;
-	},	
+	}
 };
 /***************************************/
 MSQTA._Helpers.IndexedDBSanitizers = {

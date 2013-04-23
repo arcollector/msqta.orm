@@ -140,7 +140,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		var registeredPK = registeredSchemaDefinition.primaryKey,
-			currentPK = currentSchemaDefinition.primaryKey
+			currentPK = currentSchemaDefinition.primaryKey;
 		
 		if( !isNewSchema ) {
 			// chaging/droping the primaryKey required a new schema too

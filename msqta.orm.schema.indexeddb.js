@@ -52,7 +52,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback, 
 			comparator: fieldMapping,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 	
@@ -72,7 +72,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback, 
 			comparator: null,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 
@@ -154,7 +154,7 @@ MSQTA._Schema.IndexedDB = {
 		this._getAll( {
 			callback: filterCallback,
 			comparator: null,
-			fields: null,
+			fields: null
 		}, userCallback, userContext );
 	},
 	

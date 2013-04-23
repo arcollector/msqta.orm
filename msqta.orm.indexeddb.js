@@ -762,7 +762,7 @@ MSQTA._ORM.IndexedDB = {
 		} else {
 			req = this._openUserDatabase(); 
 			req.onsuccess = function( e ) {
-				var db = e.target.result
+				var db = e.target.result,
 					type = q.type,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
 					objectStore = transaction.objectStore( schemaName );
@@ -1039,7 +1039,7 @@ MSQTA._ORM.IndexedDB = {
 			batchData;
 		
 		if( !( data instanceof Array ) || !data.length ) {
-			MSQTA._Errors.batch1( databaseName, data )
+			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
 		if( typeof callback !== 'function' ) {
@@ -1109,5 +1109,5 @@ MSQTA._ORM.IndexedDB = {
 		}
 		
 		this._deleteUserDatabase( callback, context );
-	},
+	}
 };
