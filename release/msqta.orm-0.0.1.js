@@ -127,7 +127,7 @@ MSQTA._Helpers = {
 		return new Date( d[0], d[1]-1, d[2], 0, 0, 0, 0 );
 	},
 	
-	castDate: function( value ) {
+	castTime: function( value ) {
 		var d = new Date(),
 			t = value.split( ':' );
 		

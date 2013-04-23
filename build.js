@@ -90,7 +90,7 @@ function replaceErrors( value ) {
 
 function replaceKeywords( value ) {
 	var methods = [ 'noop', 'defaultCallback', 'getCaster', 'castObj', 'castDate', 'castDate', 'castTime', 'castDateTime', 'castBoolean', 'castGeneric', 'dimSchemaInstance', 'dimORMInstance', 'getORMPrototype', 'instantiateSchema', 'getValueBySchema', 'resetSchemaAt', '_getValueBySchema', '_resetSchemaAt', 'getSanitizer', 'sanitizeString', 'sanitizeInt', 'sanitizeDate', 'sanitizeTime', 'sanitizeDatetime', 'sanitizeObj', 'sanitizeBoolean', 'sanitizeGeneric', 'zero', 'sanitizer', 'toJS', 'isDate', 'abstract', 'real', 'isJSON' ];
-	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation' ];
+	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length;
 	for( ; i < l; i++ ) {
@@ -132,16 +132,25 @@ function buildFull() {
 	preBuild();
 	
 	var source = [ msqtaORM, msqtaIndexedDBORM, msqtaIndexedDBSchema, msqtaWebSQLORM, msqtaWebSQLSchema ];
+	var dest = copy.createDataObject();
 	
-	copy( {
-		source: source,
-		filter: [ removeDevMode, replaceErrors, replaceKeywords, replaceWebSQLKeywords, replaceIndexedDBKeywords, copy.filter.uglifyjs ],
-		dest: getMsqtaBuildName( true )
-	} );
-	
+	// all the js joined in a big file
 	copy( {
 		source: source,
 		dest: getMsqtaBuildName()
+	} );
+	
+	// all the js joined in a big file MINIFIED!!
+	copy( {
+		source: source,
+		filter: [ removeDevMode, replaceErrors, replaceKeywords, replaceWebSQLKeywords, replaceIndexedDBKeywords ],
+		dest: dest,
+	} );
+	dest.value = '(function( window ) {\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );'
+	copy( {
+		source: dest,
+		//filter: copy.filter.uglifyjs,
+		dest: getMsqtaBuildName( true )
 	} );
 	
 }
