@@ -75,9 +75,9 @@ MSQTA._Schema.WebSQL = {
 		if( this.forceDestroy ) {
 			this._isSchemaDropped = true;
 			
-			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again\n\tDROP TABLE IF EXISTS ' + schemaName;
+			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -207,7 +207,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		// create the new table
-		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+		ORM._transaction( { query: [ createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -227,7 +227,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
-		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isInternal: true } );
+		ORM._transaction( { query: [ createTempTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
 	},
 	
 	_updateSchema2: function() {
@@ -249,7 +249,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t2) Fetching all rows from old schema "' + schemaName + '" by 500 rows per time' );
 		}
 	
-		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isInternal: true } );
+		ORM._transaction( { query: [ selectQuery ], internalContext: this, internalCallback: this._updateSchema3, isInternal: true } );
 	},
 	
 	_updateSchema3: function( results ) {
@@ -334,16 +334,16 @@ MSQTA._Schema.WebSQL = {
 		queryData = {
 			query: insertQueries,
 			replacements: values,
-			context: this,
+			internalContext: this,
 			isInternal: true
 		};
 		
 		// get for more records
 		if( l === 500 ) {
 			this._offset += 500;
-			queryData.callback = this._updateSchema2;
+			queryData.internalCallback = this._updateSchema2;
 		} else {
-			queryData.callback = this._updateSchema4;
+			queryData.internalCallback = this._updateSchema4;
 		}
 		ORM._transaction( queryData );
 	},
@@ -364,7 +364,7 @@ MSQTA._Schema.WebSQL = {
 		// to avoid this process in _updateSchema5
 		this._isSchemaDropped = true;
 		
-		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+		ORM._transaction( { query: [ dropQuery, renameQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema5: function() {
@@ -394,7 +394,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( indexQueries.length ) {
-			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isInternal: true } );
+			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema6, isInternal: true } );
 			
 		} else {
 			this._updateSchema6();
@@ -439,9 +439,9 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
-			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database\n\tDELETE FROM ' + schemaName;
+			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -467,8 +467,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery, 
 			replacements: [ values ],
-			context: this,
-			callback: this._processResults, 
+			internalCallback: this._processResults, 
+			internalContext: this,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -489,8 +489,8 @@ MSQTA._Schema.WebSQL = {
 		
 		ORM._transaction( { 
 			query: selectQuery, 
-			context: this, 
-			callback: this._getByCallback, 
+			internalContext: this, 
+			internalCallback: this._getByCallback, 
 			userCallback: userCallback, 
 			userContext: userContext,
 			filterCallback: filterCallback
@@ -556,8 +556,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -600,8 +600,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -614,8 +614,8 @@ MSQTA._Schema.WebSQL = {
 
 		ORM._transaction( {
 			query: selectAllQuery, 
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -664,8 +664,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQueryWithLike,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -893,8 +893,8 @@ MSQTA._Schema.WebSQL = {
 			dropQuery = 'DROP TABLE ' + schemaName;
 		
 		ORM._transaction( {
-			callback: this._destroy,
-			context: this,
+			internalCallback: this._destroy,
+			internalContext: this,
 			query: dropQuery, 
 			userCallback: userCallback, 
 			userContext: userContext 

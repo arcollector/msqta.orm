@@ -719,7 +719,129 @@ MSQTA._ORM.IndexedDB = {
 			args: arguments
 		} );
 	},
-	
+// ********************************/
+// ********************************/
+// ********************************/
+	_SwapRecords: {
+		init: function( settings ) {
+			var ORM = settings.ORM,
+				Schema = ORM._currentSchema,
+				schemaName = Schema._name;
+
+			this.ORM = ORM;
+			this.key = 0;
+			this.isAdvance = false;
+			this.targetDB = null;
+			this.baseDB = null;
+			this.endCallback = settings.endCallback;
+			this.endContext = settings.endContext;
+			this.endArg = settings.endArg;
+			this.processCallback = settings.processCallback;
+
+			if( settings.isBaseDBMSQTA ) {
+				this.openBaseDB = this.openTestigoDB;
+				this.baseSchema = 'dump';
+				this.openTargetDB = this.openUserDB;
+				this.targetSchema = schemaName;
+			} else {
+				this.openBaseDB = this.openUserDB;
+				this.baseSchema = schemaName;
+				this.openTargetDB = this.openTestigoDB;
+				this.targetSchema = 'dump';
+			}
+			
+			this.getCursor();
+		},
+		
+		openTestigoDB: function() {
+			return this.ORM._openTestigoDatabase();
+		},
+		
+		openUserDB: function() {
+			return this.ORM._openUserDatabase();
+		},
+		
+		getCursor: function() {
+			var self = this,
+				ORM = self.ORM,
+				baseSchema = self.baseSchema,
+				req = self.openBaseDB();
+			
+			req.onsuccess = function( e ) {
+				self.baseDB = this.result;
+				var transaction = self.baseDB.transaction( [ baseSchema ], MSQTA._IDBTransaction.READ_ONLY ),
+					objectStore = transaction.objectStore( baseSchema ),
+					req = objectStore.openCursor();
+				
+				req._self = self;
+				req.onsuccess = self.getRecord;
+			};
+			
+			req.onerror = ORM._initSchemaFail;
+		},
+		
+		getRecord: function( e ) {
+			var self = this._self,
+				baseDB = self.baseDB,
+				cursor = this.result;
+			
+			if( cursor ) {
+				// cursor.advance() has been triggered
+				if( self.isAdvance ) {
+					self.saveRecord( cursor.value );
+					self.isAdvance = false;
+					baseDB.close();
+				// initial case
+				} else if( self.key === 0 ) {
+					self.saveRecord( cursor.value );
+					self.key++;
+					baseDB.close();
+				} else {
+					cursor.advance( self.key );
+					self.key++;
+					self.isAdvance = true;
+				}
+			} else {
+				baseDB.close();
+				self.done();
+			}
+		},
+		
+		saveRecord: function( record ) {
+			var self = this,
+				ORM = self.ORM,
+				targetSchema = self.targetSchema,
+				req = self.openTargetDB();
+			
+			req.onsuccess = function( e ) {
+				self.targetDB = this.result;
+				var transaction = self.targetDB.transaction( [ targetSchema], MSQTA._IDBTransaction.READ_WRITE ),
+					objectStore = transaction.objectStore( targetSchema ),
+					req = self.processCallback( objectStore, record, self.key );
+				
+				req._self = self;
+				req.onsuccess = self.nextRecord;
+				req.onerror = self.nextRecord;
+			};
+			
+			req.onerror = ORM._initSchemaFail;
+		},
+		
+		nextRecord: function( e ) {
+			var self = this._self;
+			
+			self.targetDB.close();
+			self.getCursor();
+		},
+		
+		done: function() {
+			this.endCallback.call( this.endContext, this.endArg );
+		}
+		
+	},
+// ********************************/
+// ********************************/
+// ********************************/
 	_open: function() {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: opening the testigo database "__msqta__"' );
@@ -729,11 +851,11 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			// __msqta__ is the place that all the know databases information are stores
 			// we need this to take track of different version numbers of all user databases
-			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+			req = this._openTestigoDatabase();
 		
 		// create the __msqta__ schema (this only ocucrrs in the first run, latter onupgradeneeded never agina will be called)
 		req.onupgradeneeded = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				tableDatabases;
 			
 			if( self.devMode ) {
@@ -749,13 +871,13 @@ MSQTA._ORM.IndexedDB = {
 		
 		// now figure out the user database is a new one and get its current branch (version number)
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'databases' );
 
 			// get the user database information in __msqta__
 			objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
-				var userDatabaseRecord = e.target.result;
+				var userDatabaseRecord = this.result;
 		
 				// first run
 				if( !userDatabaseRecord ) {
@@ -812,12 +934,12 @@ MSQTA._ORM.IndexedDB = {
 			// ahora debo borrar toda esa information de __msqta__.databases
 			req = MSQTA._IndexedDB.open( '__msqta__' );
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 					objectStore = transaction.objectStore( 'databases' );
 				
 				objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
-					var userDatabaseRecord = e.target.result;
+					var userDatabaseRecord = this.result;
 					objectStore.delete( userDatabaseRecord.id ).onsuccess = function( e ) {
 						db.close();
 						
@@ -849,16 +971,16 @@ MSQTA._ORM.IndexedDB = {
 			req;
 		
 		if( this._schemasToInit.length ) {			
-			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+			req = this._openTestigoDatabase();
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 					objectStore = transaction.objectStore( 'databases' );
 				
 				// we need to get the user database data to detect schemas changes
 				objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
 					// this is current schema and branch
-					var userDatabaseRecord = e.target.result;
+					var userDatabaseRecord = this.result;
 					self._initSchemas2( db, objectStore, userDatabaseRecord );
 				};
 			};
@@ -899,12 +1021,6 @@ MSQTA._ORM.IndexedDB = {
 				console.log( 'MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the database "' + databaseName + '", then it will recreate again' );
 			}
 			this._updateSchema3( this._updateSchema6 );
-		
-		} else if( Schema.forceEmpty ) {
-			if( this.devMode ) {
-				console.log( 'MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '"' );
-			}
-			this._updateSchema7();
 
 		// else check for schema changes
 		} else {
@@ -920,14 +1036,30 @@ MSQTA._ORM.IndexedDB = {
 					console.log( '\tnew changes has been detected, proceeding to update its schema!' );
 				}
 				
-				this._updateSchema();
+				if( Schema.forceEmpty ) {
+					if( this.devMode ) {
+						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
+					}
+					this._updateSchema3( this._updateSchema6, this );
+					
+				} else {
+					this._updateSchema();
+				}
 				
 			} else {
 				if( this.devMode ) {
 					console.log( '\tno new changes has been detected!' );
 				}
 				
-				this._nextSchemaToInit();
+				if( Schema.forceEmpty ) {
+					if( this.devMode ) {
+						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
+					}
+					this._updateSchema7();
+				
+				} else {
+					this._nextSchemaToInit();
+				}
 			}
 		}
 	},
@@ -994,7 +1126,7 @@ MSQTA._ORM.IndexedDB = {
 			req = this._openUserDatabaseForChanges();
 		
 		req.onupgradeneeded = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			
 			if( self.devMode ) {
 				console.log( 'MSQTA-ORM: proceeding to create the schema "' + schemaName + '" for the "' + databaseName + '" database' );
@@ -1004,7 +1136,7 @@ MSQTA._ORM.IndexedDB = {
 		};
 		
 		req.onsuccess = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			db.close();
 			
 			self._saveBranch( self._nextSchemaToInit, self );
@@ -1015,12 +1147,12 @@ MSQTA._ORM.IndexedDB = {
 	
 	_updateSchema: function() {
 		var self = this,
-			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+			req = this._openTestigoDatabase();
 		
 		// cleaning any shit on dump (this is only happens when the user
 		// shutdown the browser when this process was running for example)
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'dump' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'dump' );
 			
@@ -1036,79 +1168,25 @@ MSQTA._ORM.IndexedDB = {
 	_updateSchema2: function() {
 		var self = this,
 			Schema = this._currentSchema,
-			schemaName = Schema._name,
-			databaseName = this._name,
-			key = 0, isAdvance = false,
-			msqtaDB, userDatabase;
+			schemaName = Schema._name;
 		
 		if( this.devMode ) {
 			console.log( '\t(1) saving temporaly all records from the schema in the testigo database' );
 		}
 		
-		var getCursor = function() {
-			var req = self._openUserDatabase();
-			req.onsuccess = function( e ) {
-				userDatabase = e.target.result;
-				var transaction = userDatabase.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY ),
-					objectStore = transaction.objectStore( schemaName );
-				
-				objectStore.openCursor().onsuccess = getRecord;
-			};
-			
-			req.onerror = this._initSchemaFail;
+		var processRecord = function( objectStore, record, cursorPosition ) {
+			return objectStore.add( record, cursorPosition );
 		};
 		
-		var getRecord = function( e ) {
-			var cursor = e.target.result;
-			if( cursor ) {
-				// cursor.advance() has been triggered
-				if( isAdvance ) {
-					saveRecord( cursor.value );
-					isAdvance = false;
-					userDatabase.close();
-				// initial case
-				} else if( key === 0 ) {
-					saveRecord( cursor.value );
-					key++;
-					userDatabase.close();
-				} else {
-					cursor.advance( key );
-					key++;
-					isAdvance = true;
-				}
-			} else {
-				userDatabase.close();
-				done();
-			}
-		};
-		
-		var saveRecord = function( record ) {
-			var req = MSQTA._IndexedDB.open( '__msqta__', 1 );
-			req.onsuccess = function( e ) {
-				msqtaDB = e.target.result;
-				var transaction = msqtaDB.transaction( [ 'dump' ], MSQTA._IDBTransaction.READ_WRITE ),
-					objectStore = transaction.objectStore( 'dump' );
-			
-				if( self.devMode ) {
-					console.log( record );
-				}
-				objectStore.add( record, key ).onsuccess = nextRecord;
-			};
-			
-			req.onerror = this._initSchemaFail;
-		};
-		
-		var nextRecord = function( e ) {
-			msqtaDB.close();
-			getCursor();
-		};
-		
-		var done = function() {
-			self._updateSchema3( self._updateSchema4 );
-		};
-		
-		// start
-		getCursor();
+		this._SwapRecords.init( {
+			ORM: this,
+			// is __msqta__ the base database (the place to get the records to swap)
+			isBaseDBMSQTA: false,
+			endCallback: this._updateSchema3,
+			endContext: this,
+			endArg: this._updateSchema4,
+			processCallback: processRecord
+		} );
 	},
 	
 	_updateSchema3: function( next ) {
@@ -1119,7 +1197,7 @@ MSQTA._ORM.IndexedDB = {
 			req = this._openUserDatabaseForChanges();
 
 		req.onupgradeneeded = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			
 			if( self.devMode ) {
 				console.log( '\t(2) re-creating schema, we need to drop it and create it again with the newly schema' );
@@ -1133,7 +1211,7 @@ MSQTA._ORM.IndexedDB = {
 		};
 		
 		req.onsuccess = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			db.close();
 			
 			if( self.devMode ) {
@@ -1149,90 +1227,38 @@ MSQTA._ORM.IndexedDB = {
 		var self = this,
 			Schema = this._currentSchema,
 			schemaName = Schema._name,
-			schemaFields = Schema._schemaFields,
-			databaseName = this._name,
-			msqtaDB, userDatabase, isAdvance = false, key = 0;
+			schemaFields = Schema._schemaFields;
 		
-		if( self.devMode ) {
+		if( this.devMode ) {
 			console.log( '\t(4) restoring and recasting the saved temporaly records (if there any) to the recenlty updated schema' );
 		}
 		
-		var getCursor = function() {
-			var req = MSQTA._IndexedDB.open( '__msqta__', 1 );
-			req.onsuccess = function( e ) {
-				msqtaDB = e.target.result;
-				var transaction = msqtaDB.transaction( [ 'dump' ], MSQTA._IDBTransaction.READ_ONLY ),
-					objectStore = transaction.objectStore( 'dump' );
-				
-				objectStore.openCursor().onsuccess = getRecord;
-			};
+		var processRecord = function( objectStore, record ) {
+			var schemaField, fieldName;
 			
-			req.onerror = this._initSchemaFail;
-		};
-		
-		var getRecord = function( e ) {
-			var cursor = e.target.result;
-			if( cursor ) {
-				// cursor.advance() has been triggered
-				if( isAdvance ) {
-					saveRecord( cursor.value );
-					isAdvance = false;
-					msqtaDB.close();
-				// initial case
-				} else if( key === 0 ) {
-					saveRecord( cursor.value );
-					key++;
-					msqtaDB.close();
+			for( fieldName in record ) {
+				schemaField = schemaFields[fieldName];
+				if( schemaField ) {
+					record[fieldName] = schemaField.sanitizer( record[fieldName], schemaField.zero );
 				} else {
-					cursor.advance( key );
-					key++;
-					isAdvance = true;
+					delete record[fieldName];
 				}
-			} else {
-				msqtaDB.close();
-				done();
 			}
-		};
-		
-		var saveRecord = function( record ) {
-			var req = self._openUserDatabase();
-			req.onsuccess = function( e ) {
-				userDatabase = e.target.result;
-				var transaction = userDatabase.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE ),
-					objectStore = transaction.objectStore( schemaName ),
-					fieldName, schemaField, req;
 			
-				for( fieldName in record ) {
-					schemaField = schemaFields[fieldName];
-					if( schemaField ) {
-						record[fieldName] = schemaField.sanitizer( record[fieldName], schemaField.zero );
-					} else {
-						delete record[fieldName];
-					}
-				}
-				
-				if( self.devMode ) {
-					console.log( record );
-				}
-				req = objectStore.put( record );
-				req.onsuccess = nextRecord;
-				req.onerror = nextRecord;
-			};
+			if( self.devMode ) {
+				console.log( record );
+			}
 			
-			req.onerror = this._initSchemaFail;
+			return objectStore.put( record );
 		};
 		
-		var nextRecord = function( e ) {
-			userDatabase.close();
-			getCursor();
-		};
-		
-		var done = function() {
-			self._updateSchema5();
-		};
-		
-		// start
-		getCursor();
+		this._SwapRecords.init( {
+			ORM: this,
+			isBaseDBMSQTA: true,
+			endCallback: this._updateSchema5,
+			endContext: this,
+			processCallback: processRecord
+		} );
 	},
 	
 	_updateSchema5: function() {
@@ -1240,9 +1266,9 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			req;
 
-		req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+		req = this._openTestigoDatabase();
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'dump' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'dump' );
 			
@@ -1266,14 +1292,14 @@ MSQTA._ORM.IndexedDB = {
 			schemaName = Schema._name,
 			req;
 	
-		req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+		req = this._openTestigoDatabase();
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'databases' );
 			
 			objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
-				var userDatabaseRecord = e.target.result,
+				var userDatabaseRecord = this.result,
 					req;
 				
 				if( self.devMode ) {
@@ -1300,7 +1326,7 @@ MSQTA._ORM.IndexedDB = {
 
 		req = this._openUserDatabase();
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( schemaName );
 			
@@ -1383,14 +1409,14 @@ MSQTA._ORM.IndexedDB = {
 			newBranch = this._currentBranch,
 			req;
 		
-		req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+		req = this._openTestigoDatabase();
 		req.onsuccess = function( e ) {
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'databases' );
 		
 			objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
-				var userDatabaseRecord = e.target.result;
+				var userDatabaseRecord = this.result;
 				
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: saving branch (version number) from the database "' + databaseName + '" to: ' + newBranch );
@@ -1434,8 +1460,12 @@ MSQTA._ORM.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: opening "' + databaseName + '" at branch: ' + currentBranch );
 		}
-		
+
 		return MSQTA._IndexedDB.open( databaseName, currentBranch );	
+	},
+	
+	_openTestigoDatabase: function() {
+		return MSQTA._IndexedDB.open( '__msqta__', 1 );
 	},
 	
 	_preExec: function( queryData ) {
@@ -1458,36 +1488,44 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	_exec: function() {
-		var self = this,
-			q = this._queries.shift(),
-			databaseName = this._name,
-			schemaName = q.schema,
-			type = q.type,
-			req;
+		var q = this._queries.shift();
 
 		// especial case
-		if( type === 'destroy' ) {
+		if( q.type === 'destroy' ) {
 			this._destroy( q );
 		
 		} else {
-			req = this._openUserDatabase(); 
-			req.onsuccess = function( e ) {
-				var db = e.target.result,
-					type = q.type,
-					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
-					objectStore = transaction.objectStore( schemaName );
-				
-				// keep augmenting q (queryData)
-				q.objectStore = objectStore;
-				q.database = db;
-				
-				if( self.devMode ) {
-					console.log( 'MSQTA-ORM: "' + schemaName + '" schema will be manipulate (' + type + ') with the data (may be undefined):', q.data );
-				}
-			
-				self['_' + type]( q );
-			};
+			this._getSchemaObjectStore( q, this._exec2, this );
 		}
+	},
+	
+	_exec2: function( q ) {
+		var schemaName = q.schema,
+			type = q.type;
+		
+		if( this.devMode ) {
+			console.log( 'MSQTA-ORM: "' + schemaName + '" schema will be manipulate (' + type + ') with the data (may be undefined):', q.data );
+		}
+		
+		this['_' + type]( q );
+	},
+	
+	_getSchemaObjectStore: function( q, callback, context ) {
+		var schemaName = q.schema,
+			req = this._openUserDatabase();
+		
+		req.onsuccess = function( e ) {
+			var db = this.result,
+				type = q.type,
+				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
+				objectStore = transaction.objectStore( schemaName );
+			
+			// keep augmenting q (queryData)
+			q.objectStore = objectStore;
+			q.database = db;
+			
+			callback.call( context, q );
+		};
 	},
 	
 	_continue: function() {
@@ -1527,14 +1565,26 @@ MSQTA._ORM.IndexedDB = {
 		var process = function() {
 			var data = datas[currentIndex],
 				req = objectStore.add( data );
-			
+
 			req.onsuccess = function( e ) {
 				// the lastID
-				next( e.target.result );
+				next( this.result );
 			};
 			
 			req.onerror = function( e ) {
-				next( false );
+				// dont re open the connection is we are in the last iteration
+				if( currentIndex !== totalQueries ) {
+					queryData.database.close();
+					// restore connection
+					self._getSchemaObjectStore( queryData, function() {
+						// reset the object store
+						objectStore = queryData.objectStore;
+						next( false );
+					}, self );
+				
+				} else {
+					next( false );
+				}
 			};
 		};
 		
@@ -1572,7 +1622,7 @@ MSQTA._ORM.IndexedDB = {
 			
 			if( targetPk ) {
 				objectStore.get( targetPk ).onsuccess = function( e ) {
-					var record = e.target.result,
+					var record = this.result,
 						req;
 					if( record ) {
 						// update the record
@@ -1582,7 +1632,7 @@ MSQTA._ORM.IndexedDB = {
 					
 						req = objectStore.put( record );
 						req.onsuccess = function( e ) {
-							if( e.target.result ) {
+							if( this.result ) {
 								rowsAffected++;
 							}
 							next();
@@ -1599,7 +1649,7 @@ MSQTA._ORM.IndexedDB = {
 				// get all the records, yes all of them!!
 				// start iteration
 				objectStore.openCursor().onsuccess = function( e ) {
-					var cursor = e.target.result;
+					var cursor = this.result;
 					if( cursor ) {
 						// get the pointed 
 						var record = cursor.value,
@@ -1619,7 +1669,7 @@ MSQTA._ORM.IndexedDB = {
 							
 							req = cursor.update( record );
 							req.onsuccess = function( e ) {
-								if( e.target.result ) {
+								if( this.result ) {
 									rowsAffected++;
 								}
 								cursor.continue();
@@ -1667,7 +1717,7 @@ MSQTA._ORM.IndexedDB = {
 		var process = function() {
 			var data = datas[currentIndex];
 			objectStore.delete( data[pk] ).onsuccess = function( e ) {
-				if( e.target.result ) {
+				if( this.result ) {
 					rowsAffected++;
 				}
 				next();
@@ -1683,7 +1733,7 @@ MSQTA._ORM.IndexedDB = {
 			objectStore = queryData.objectStore;
 		
 		objectStore.count().onsuccess = function( e ) {
-			rowsAffected = e.target.result;
+			rowsAffected = this.result;
 			objectStore.clear().onsuccess = function( e ) {
 				self._done( queryData, rowsAffected );
 			};
@@ -1697,13 +1747,13 @@ MSQTA._ORM.IndexedDB = {
 
 		// delete the schema from the user database
 		req.onupgradeneeded = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			
 			db.deleteObjectStore( schemaName );
 		};
 		
 		req.onsuccess = function( e ) {
-			var db = e.target.result;
+			var db = this.result;
 			db.close();
 			
 			// now delete the schema in __msqta__ databases datas
@@ -1716,16 +1766,16 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			schemaName = queryData.schema,
 			Schema = this._Schemas[schemaName],
-			req = MSQTA._IndexedDB.open( '__msqta__', 1 );
+			req = this._openTestigoDatabase();
 		
 		req.onsuccess = function( e ) {
 			// delete the schema from the testigo database
-			var db = e.target.result,
+			var db = this.result,
 				transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( 'databases' );
 		
 			objectStore.index( 'name' ).get( databaseName ).onsuccess = function( e ) {
-				var databaseData = e.target.result;
+				var databaseData = this.result;
 				// delete the schema from schemas
 				delete databaseData.schemas[schemaName];
 	
@@ -2007,14 +2057,14 @@ MSQTA._Schema.IndexedDB = {
 				data = [];
 			
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
 					objectStore = transaction.objectStore( schemaName );
 			
 				userDatabase = db;
 				
 				objectStore.openCursor().onsuccess = function( e ) {
-					var cursor = e.target.result,
+					var cursor = this.result,
 						record;
 					
 					if( cursor ) {
@@ -2211,7 +2261,7 @@ MSQTA._Schema.IndexedDB = {
 				data = [];
 			
 			var grabRecords = function( e ) {
-				var cursor = e.target.result;
+				var cursor = this.result;
 				if( cursor ) {
 					data.push( cursor.value );
 					cursor.continue();
@@ -2223,7 +2273,7 @@ MSQTA._Schema.IndexedDB = {
 			};
 			
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
 					objectStore = transaction.objectStore( schemaName );
 				
@@ -2481,7 +2531,7 @@ MSQTA._ORM.WebSQL = {
 		// this is used when the multiples queries are connected
 		// but they cannot be runs all in a single transaction
 		this._errorQueries = [];
-		// this holds all the interal queries that are made when
+		// this holds all the internal queries that are made when
 		// a schema is initialized, these queries are more important
 		// that this._queries in terms at the moment of execute the next query
 		this._queriesInternal = [];
@@ -2551,9 +2601,8 @@ MSQTA._ORM.WebSQL = {
 	* @context SQLTransaction
 	*/
 	_error: function( error ) {
+		// if we use a throw Error the application will die
 		console.error( 'MSQTA-ORM: query has failed: \n\t' + 'code: ' + error.code + '\n\t' + 'message: ' + error.message );
-		// continue with more shit
-		this._results( false );
 	},
 /***************************************/
 	_transaction: function( queryData ) {
@@ -2626,8 +2675,16 @@ MSQTA._ORM.WebSQL = {
 			self._results( results );
 		};
 		
-		var error = function( tx, error ) {
+		// still more queries to process
+		var errorAndContinue = function( tx, error ) {
 			self._error( error );
+		};
+		
+		// error in the last executed query
+		var errorAndDone = function( tx, error ) {
+			self._error( error );
+			// done
+			self._results( false );
 		};
 		
 		this._userDB.transaction( function( tx ) {			
@@ -2639,7 +2696,7 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, error );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, l ? errorAndContinue : errorAndDone );
 			}
 		} );
 	},
@@ -2657,9 +2714,9 @@ MSQTA._ORM.WebSQL = {
 		}
 		
 		// still more processing (only select clauses falls here)
-		if( queryData.callback && queryData.context ) {
+		if( queryData.internalCallback ) {
 			// go to the original caller
-			queryData.callback.call( queryData.context, results, queryData );
+			queryData.internalCallback.call( queryData.internalContext, results, queryData );
 			
 		// get back with the user
 		} else {
@@ -2848,9 +2905,9 @@ MSQTA._Schema.WebSQL = {
 		if( this.forceDestroy ) {
 			this._isSchemaDropped = true;
 			
-			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again\n\tDROP TABLE IF EXISTS ' + schemaName;
+			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -2980,33 +3037,33 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		// create the new table
-		ORM._transaction( { query: [ createTableQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+		ORM._transaction( { query: [ createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
 		var ORM = this._ORM,
 			newSchema = this._createTableQuery,
 			schemaName = this._name,
-			tempschemaName = schemaName + (+new Date()),
+			tempSchemaName = schemaName + (+new Date()),
 			// based on the newSchema we need to create in a form a backup, and the end we just will rename it
-			createTempTableQuery = newSchema.replace( 'CREATE TABLE "' + schemaName + '"', 'CREATE TABLE "' + tempschemaName + '"' );
+			createTempTableQuery = newSchema.replace( 'CREATE TABLE "' + schemaName + '"', 'CREATE TABLE "' + tempSchemaName + '"' );
 
 		// prepare the offset for the step2
 		this._offset = 0;
-		// and tempschemaName too
-		this._tempSchemaName = tempschemaName;
+		// and tempSchemaName too
+		this._tempSchemaName = tempSchemaName;
 		
 		if( this.devMode ) {
-			console.log( '\t\t1) Creating table "' + tempschemaName + '" (this will be the new one at the end of the process)' );
+			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
-		ORM._transaction( { query: [ createTempTableQuery ], context: this, callback: this._updateSchema2, isInternal: true } );
+		ORM._transaction( { query: [ createTempTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
 	},
 	
 	_updateSchema2: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
-			tempschemaName = this._tempSchemaName,
+			tempSchemaName = this._tempSchemaName,
 			offset = this._offset,
 			selectQuery,
 			// this is already the new schema
@@ -3014,7 +3071,7 @@ MSQTA._Schema.WebSQL = {
 		
 		// this is case that any error ocurr here we can restore, this is because
 		// this porces is not enclosed in a transaction
-		this._queryErrorID = ORM._addQueryError( 'DROP TABLE ' + tempschemaName );
+		this._queryErrorID = ORM._addQueryError( 'DROP TABLE ' + tempSchemaName );
 		
 		// get all the records from the table with the oldSchema
 		selectQuery = 'SELECT * FROM ' + schemaName + ' LIMIT ' + offset + ', 500';		
@@ -3022,7 +3079,7 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t2) Fetching all rows from old schema "' + schemaName + '" by 500 rows per time' );
 		}
 	
-		ORM._transaction( { query: [ selectQuery ], context: this, callback: this._updateSchema3, isInternal: true } );
+		ORM._transaction( { query: [ selectQuery ], internalContext: this, internalCallback: this._updateSchema3, isInternal: true } );
 	},
 	
 	_updateSchema3: function( results ) {
@@ -3030,14 +3087,20 @@ MSQTA._Schema.WebSQL = {
 			// this is already the new schema
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
-			tempschemaName = this._tempSchemaName,
+			tempSchemaName = this._tempSchemaName,
 			rows = results.rows,
 			rowData, fieldName,
 			schemaColData,
 			insertQueryCols = [],
-			insertQueryValues = [], newValues = [],
-			insertQueries = [],
-			i, l;
+			// holds the values to be passed to new schema
+			curValueTokens, 
+			// holds here the new values of the columns
+			newValueTokens = [], newValueReplacements = [],
+			insertQueries = [], 
+			// holds here the replacements
+			values = [], t,
+			i, l,
+			queryData;
 		
 		if( !results ) {
 			throw Error( 'MSQTA.ORM: fatal error on "' + schemaName + '", you have to destroy this schema to continue, use the set the param "forceDestroy" when you create this schema in your code to recreate this schema, everything will be lost!' );
@@ -3064,59 +3127,74 @@ MSQTA._Schema.WebSQL = {
 			schemaColData = schemaFields[fieldName];
 			if( insertQueryCols.indexOf( fieldName ) === -1 ) {
 				insertQueryCols.push( fieldName );
-				newValues.push( schemaColData.zero );
+				newValueReplacements.push( schemaColData.zero );
+				newValueTokens.push( '?' );
 			}
 		}
 		
 		for( i = 0, l = rows.length; i < l; i++ ) {
+			t = [];
+			curValueTokens = [];
+			
 			rowData = rows.item( i );
 			for( fieldName in rowData ) {
 				// get how this fieldName has to been in the new schema
 				schemaColData = schemaFields[fieldName];
 				if( schemaColData ) {
+					curValueTokens.push( '?' );
 					if( schemaColData.isJSON ) {
-						insertQueryValues.push( "'" + rowData[fieldName] + "'" );
+						t.push( rowData[fieldName] );
 					} else {
-						insertQueryValues.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
+						t.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
 					}
 				}
 			}
 			
 			// make a row insert values
-			insertQueries.push( 'INSERT INTO ' + tempschemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + insertQueryValues.concat( newValues ).join( ', ' ) + ' )' );
-			insertQueryValues = [];
+			insertQueries.push( 'INSERT INTO ' + tempSchemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + curValueTokens.concat( newValueTokens ).join( ', ' ) + ' )' );
+			// make the replacements (concat the default value of the columns)
+			values.push( t.concat( newValueReplacements ) );
+			
 		}
 		
 		if( self.devMode ) {
-			console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempschemaName + '"' );
+			console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempSchemaName + '"' );
 		}
+		
+		queryData = {
+			query: insertQueries,
+			replacements: values,
+			internalContext: this,
+			isInternal: true
+		};
 		
 		// get for more records
 		if( l === 500 ) {
 			this._offset += 500;
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema2, isInternal: true } );
+			queryData.internalCallback = this._updateSchema2;
 		} else {
-			ORM._transaction( { query: insertQueries, context: this, callback: this._updateSchema4, isInternal: true } );
+			queryData.internalCallback = this._updateSchema4;
 		}
+		ORM._transaction( queryData );
 	},
 	
 	_updateSchema4: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			dropQuery = 'DROP TABLE '  + schemaName,
-			tempschemaName = this._tempSchemaName,
-			renameQuery = 'ALTER TABLE ' + tempschemaName + ' RENAME TO ' + schemaName;
+			tempSchemaName = this._tempSchemaName,
+			renameQuery = 'ALTER TABLE ' + tempSchemaName + ' RENAME TO ' + schemaName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t4) Deleting old schema "' + schemaName + '"' );
-			console.log( '\t\t5) Renaming new schema "' + tempschemaName + '" to "' + schemaName + '"' );
+			console.log( '\t\t5) Renaming new schema "' + tempSchemaName + '" to "' + schemaName + '"' );
 		}
 		
 		// i need this, because when you drop a table, automatcally its index are dropped aswell,
 		// to avoid this process in _updateSchema5
 		this._isSchemaDropped = true;
 		
-		ORM._transaction( { query: [ dropQuery, renameQuery ], context: this, callback: this._updateSchema5, isInternal: true } );
+		ORM._transaction( { query: [ dropQuery, renameQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 	},
 	
 	_updateSchema5: function() {
@@ -3146,7 +3224,7 @@ MSQTA._Schema.WebSQL = {
 		}
 		
 		if( indexQueries.length ) {
-			ORM._transaction( { query: indexQueries, context: this, callback: this._updateSchema6, isInternal: true } );
+			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema6, isInternal: true } );
 			
 		} else {
 			this._updateSchema6();
@@ -3191,9 +3269,9 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
-			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database\n\tDELETE FROM ' + schemaName;
+			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], context: this, callback: this._updateSchema7, isInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -3219,8 +3297,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery, 
 			replacements: [ values ],
-			context: this,
-			callback: this._processResults, 
+			internalCallback: this._processResults, 
+			internalContext: this,
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -3241,8 +3319,8 @@ MSQTA._Schema.WebSQL = {
 		
 		ORM._transaction( { 
 			query: selectQuery, 
-			context: this, 
-			callback: this._getByCallback, 
+			internalContext: this, 
+			internalCallback: this._getByCallback, 
 			userCallback: userCallback, 
 			userContext: userContext,
 			filterCallback: filterCallback
@@ -3308,8 +3386,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -3352,8 +3430,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQuery,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -3366,8 +3444,8 @@ MSQTA._Schema.WebSQL = {
 
 		ORM._transaction( {
 			query: selectAllQuery, 
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext
 		} );
@@ -3416,8 +3494,8 @@ MSQTA._Schema.WebSQL = {
 		ORM._transaction( { 
 			query: selectQueryWithLike,
 			replacements: [ values ],
-			context: this, 
-			callback: this._processResults, 
+			internalContext: this, 
+			internalCallback: this._processResults, 
 			userCallback: userCallback, 
 			userContext: userContext 
 		} );
@@ -3645,8 +3723,8 @@ MSQTA._Schema.WebSQL = {
 			dropQuery = 'DROP TABLE ' + schemaName;
 		
 		ORM._transaction( {
-			callback: this._destroy,
-			context: this,
+			internalCallback: this._destroy,
+			internalContext: this,
 			query: dropQuery, 
 			userCallback: userCallback, 
 			userContext: userContext 

@@ -184,14 +184,14 @@ MSQTA._Schema.IndexedDB = {
 				data = [];
 			
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
 					objectStore = transaction.objectStore( schemaName );
 			
 				userDatabase = db;
 				
 				objectStore.openCursor().onsuccess = function( e ) {
-					var cursor = e.target.result,
+					var cursor = this.result,
 						record;
 					
 					if( cursor ) {
@@ -388,7 +388,7 @@ MSQTA._Schema.IndexedDB = {
 				data = [];
 			
 			var grabRecords = function( e ) {
-				var cursor = e.target.result;
+				var cursor = this.result;
 				if( cursor ) {
 					data.push( cursor.value );
 					cursor.continue();
@@ -400,7 +400,7 @@ MSQTA._Schema.IndexedDB = {
 			};
 			
 			req.onsuccess = function( e ) {
-				var db = e.target.result,
+				var db = this.result,
 					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
 					objectStore = transaction.objectStore( schemaName );
 				

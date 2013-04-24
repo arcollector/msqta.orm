@@ -32,7 +32,7 @@ MSQTA._ORM.WebSQL = {
 		// this is used when the multiples queries are connected
 		// but they cannot be runs all in a single transaction
 		this._errorQueries = [];
-		// this holds all the interal queries that are made when
+		// this holds all the internal queries that are made when
 		// a schema is initialized, these queries are more important
 		// that this._queries in terms at the moment of execute the next query
 		this._queriesInternal = [];
@@ -215,9 +215,9 @@ MSQTA._ORM.WebSQL = {
 		}
 		
 		// still more processing (only select clauses falls here)
-		if( queryData.callback && queryData.context ) {
+		if( queryData.internalCallback ) {
 			// go to the original caller
-			queryData.callback.call( queryData.context, results, queryData );
+			queryData.internalCallback.call( queryData.internalContext, results, queryData );
 			
 		// get back with the user
 		} else {
