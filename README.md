@@ -54,7 +54,7 @@ Creating is also opening a database, you only create a database the first time t
 * `prefered` *(optional)*: some browsers supports WebSQL and IndexedDB, use this field to force it to use a specific implementation, if the browser don't support the prefered implementation it will use the implementation that it really support.
 * `forceDestroy` *(optional)*: only useful in dev stage, it drop the named database to be recreated again, brings to you always an empty database. This only possible with an IndexedDB implementation.
 
-`[callback]` an function to be called with a specified `[context]` after the database is created/opened, it will receibe as param a status code (`true` or `false`) if the creation/opening was succefuly or not.
+`[callback]` an function to be called with a specified `[context]` after the database is created/opened, it will receibe as param a status code (`true` or `false`) if the creation/opening was successful or not.
 
 Also you can omit the `settings` object and just pass a the database name string.
 ```javascript
@@ -285,6 +285,7 @@ Very useful method, use to wrapped out severals CRUD operations (`put`, `set` an
 Limitations
 ==========
 * MSQTA.ORM don't offers the posibility to do joins, to simulate this situation you have to filter by the field that acts as a foreign key, by using any of the quering methods.
+* Currently IndexedDB don't provide a way to know if a deletion if successful or not, like a **rowsAffected** in WebSQL implementation.
 * Primary keys must be of the type integer and cannot be ommited. Composite primary keys are not supported.
 * Indexes must only be of the type string or numeric.
 * Only a single active connection to a database is supported.
