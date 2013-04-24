@@ -102,9 +102,8 @@ MSQTA._ORM.WebSQL = {
 	* @context SQLTransaction
 	*/
 	_error: function( error ) {
+		// if we use a throw Error the application will die
 		console.error( 'MSQTA-ORM: query has failed: \n\t' + 'code: ' + error.code + '\n\t' + 'message: ' + error.message );
-		// continue with more shit
-		this._results( false );
 	},
 /***************************************/
 	_transaction: function( queryData ) {
@@ -177,8 +176,16 @@ MSQTA._ORM.WebSQL = {
 			self._results( results );
 		};
 		
-		var error = function( tx, error ) {
+		// still more queries to process
+		var errorAndContinue = function( tx, error ) {
 			self._error( error );
+		};
+		
+		// error in the last executed query
+		var errorAndDone = function( tx, error ) {
+			self._error( error );
+			// done
+			self._results( false );
 		};
 		
 		this._userDB.transaction( function( tx ) {			
@@ -190,7 +197,7 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, error );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, l ? errorAndContinue : errorAndDone );
 			}
 		} );
 	},
