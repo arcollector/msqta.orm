@@ -90,7 +90,7 @@ function replaceErrors( value ) {
 
 function replaceKeywords( value ) {
 	var methods = [ 'noop', 'defaultCallback', 'getCaster', 'castObj', 'castDate', 'castDate', 'castTime', 'castDateTime', 'castBoolean', 'castGeneric', 'dimSchemaInstance', 'dimORMInstance', 'getORMPrototype', 'instantiateSchema', 'getValueBySchema', 'resetSchemaAt', '_getValueBySchema', '_resetSchemaAt', 'getSanitizer', 'sanitizeString', 'sanitizeInt', 'sanitizeDate', 'sanitizeTime', 'sanitizeDatetime', 'sanitizeObj', 'sanitizeBoolean', 'sanitizeGeneric', 'zero', 'sanitizer', 'toJS', 'isDate', 'abstract', 'real', 'isJSON' ];
-	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args', 'filterCallback' ];
+	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args', 'filterCallback', 'userCallback', 'userContext', 'activeObjectStore', 'activeDatabase' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
@@ -106,7 +106,7 @@ function replaceKeywords( value ) {
 
 function replaceWebSQLKeywords( value ) {
 	var methods = [ '_open', '_open2', '_initSchema', '_initSchemas', '_endSchemasInitialization', '_saveSchemaOnTestigoDatabase', '_deleteUserDatabase', '_deleteUserSchema', '_error', '_transaction', '_transaction2', '_results', '_continue', '_batch', '_init', '_init2', '_getIndexUniqueQuery', '_getIndexQuery', '_checkSchemaChanges', '_createSchema', '_updateSchema', '_updateSchema2', '_updateSchema3', '_updateSchema4', '_updateSchema5', '_updateSchema6', '_updateSchema7', '_updateSchema8', '_getByCallback', '_processResults', '_destroy', '_updateSchema9', '_updateSchema10', '_getIndexName' ];
-	var properties = [ '_testigoDB', '_schemasDefinition', '_queriesInternal', '_userDB', '_lastQuery', 'query', 'replacements', 'isUpdate', 'userCallback', 'userContext', 'isDelete', 'isInsert', '_createTableQuery', '_indexesSQL', '_indexesToDelete', '_offset', '_tempSchemaName', '_queryErrorID', '_isSchemaDropped', 'isInternal', 'internalCallback', 'internalContext', 'returnValue', '_isEmpty', '_indexesToCreate' ];
+	var properties = [ '_testigoDB', '_schemasDefinition', '_queriesInternal', '_userDB', '_lastQuery', 'query', 'replacements', 'isUpdate', 'isDelete', 'isInsert', '_createTableQuery', '_indexesSQL', '_indexesToDelete', '_offset', '_tempSchemaName', '_queryErrorID', '_isSchemaDropped', 'isInternal', 'internalCallback', 'internalContext', 'returnValue', '_isEmpty', '_indexesToCreate' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
@@ -122,7 +122,7 @@ function replaceWebSQLKeywords( value ) {
 
 function replaceIndexedDBKeywords( value ) {
 	var methods = [ '_initSchemas2', '_updateUserDatabaseRecord', '_initSchemaFail', '_createSchemaForReal', '_nextSchemaToInit', '_saveBranch', '_openUserDatabaseForChanges', '_openUserDatabase', '_preExec', '_exec', '_done', '_destroy2', '_getAll', '_getWithIDBKeyRange', 'openUserDB', 'openTestigoDB', 'getCursor', 'init', 'getRecord', 'saveRecord', 'nextRecord', 'done', '_openTestigoDatabase', '_getSchemaObjectStore', '_del2', '_del3' ];
-	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected' ];
+	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected', 'indexes' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {

@@ -760,11 +760,11 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	_preExec: function( queryData ) {
-		if( !queryData.callback ) {
-			queryData.callback = MSQTA._Helpers.defaultCallback;
+		if( typeof queryData.userCallback !== 'function' ) {
+			queryData.userCallback = MSQTA._Helpers.defaultCallback;
 		}
-		if( !queryData.context ) {
-			queryData.context = window;
+		if( !queryData.userContext ) {
+			queryData.userContext = window;
 		}
 		
 		// save the entred query
@@ -812,8 +812,8 @@ MSQTA._ORM.IndexedDB = {
 				objectStore = transaction.objectStore( schemaName );
 			
 			// keep augmenting q (queryData)
-			q.objectStore = objectStore;
-			q.database = db;
+			q.activeObjectStore = objectStore;
+			q.activeDatabase = db;
 			
 			callback.call( context, q );
 		};
@@ -828,16 +828,16 @@ MSQTA._ORM.IndexedDB = {
 	
 	// this one is called when _put, _set, _del, _empty finish
 	_done: function( queryData, results ) {
-		queryData.database.close();
+		queryData.activeDatabase.close();
 		// come back to the user
-		queryData.callback.call( queryData.context, results );
+		queryData.userCallback.call( queryData.userContext, results );
 		// keep executing more queries
 		this._continue();
 	},
 	
 	_put: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore,
+			objectStore = queryData.activeObjectStore,
 			datas = queryData.data,
 			currentIndex = 0,
 			totalQueries = datas.length;
@@ -865,11 +865,11 @@ MSQTA._ORM.IndexedDB = {
 			req.onerror = function( e ) {
 				// dont re open the connection is we are in the last iteration
 				if( currentIndex !== totalQueries ) {
-					queryData.database.close();
+					queryData.activeDatabase.close();
 					// restore connection
 					self._getSchemaObjectStore( queryData, function() {
 						// reset the object store
-						objectStore = queryData.objectStore;
+						objectStore = queryData.activeObjectStore;
 						next( false );
 					}, self );
 				
@@ -884,7 +884,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_set: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore,
+			objectStore = queryData.activeObjectStore,
 			datas = queryData.data,
 			indexes = queryData.indexes,
 			pk = queryData.primaryKey,
@@ -986,7 +986,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_del: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore;
+			objectStore = queryData.activeObjectStore;
 		
 		// indexedb dont provide a way to know if a deletion is successful or not
 		// so, we first get the intial count records and then at end with get the total
@@ -1027,7 +1027,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_del3: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore;
+			objectStore = queryData.activeObjectStore;
 		
 		// get the "rowsAffected"
 		objectStore.count().onsuccess = function( e ) {
@@ -1038,7 +1038,7 @@ MSQTA._ORM.IndexedDB = {
 	_empty: function( queryData ) {
 		var self = this,
 			rowsAffected,
-			objectStore = queryData.objectStore;
+			objectStore = queryData.activeObjectStore;
 		
 		objectStore.count().onsuccess = function( e ) {
 			rowsAffected = this.result;
@@ -1091,7 +1091,7 @@ MSQTA._ORM.IndexedDB = {
 					// because to delete the schema from the user database we need to trigger
 					// and onupgradeneeded on the user database by incremeting its branch
 					self._saveBranch( function() {
-						queryData.database = db;
+						queryData.activeDatabase = db;
 						// delete from here too
 						delete self._Schemas[schemaName];
 						MSQTA._Helpers.dimSchemaInstance( Schema );
@@ -1122,8 +1122,8 @@ MSQTA._ORM.IndexedDB = {
 		// agrup params for a better manipulation
 		batchData = {
 			data: data,
-			callback: callback, 
-			context: context
+			userCallback: callback, 
+			userContext: context
 		};
 		
 		if( this._isBatchMode ) {
@@ -1155,14 +1155,14 @@ MSQTA._ORM.IndexedDB = {
 			}
 
 			t = Schema[type]( queryData.data );
-			t.callback = MSQTA._Helpers.defaultCallback;
-			t.context = window;
+			t.userCallback = MSQTA._Helpers.defaultCallback;
+			t.userContext = window;
 			this._queries.push( t );
 		}
 		// the last one will the return point
 		t = this._queries[this._queries.length-1];
-		t.callback = batchData.callback;
-		t.context = batchData.context;
+		t.userCallback = batchData.userCallback;
+		t.userContext = batchData.userContext;
 		
 		this._isBatchMode = false;
 

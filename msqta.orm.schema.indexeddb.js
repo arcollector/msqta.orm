@@ -158,12 +158,12 @@ MSQTA._Schema.IndexedDB = {
 		}, userCallback, userContext );
 	},
 	
-	_getAll: function( filterData, callback, context ) {
+	_getAll: function( filterData, userCallback, userContext ) {
 		// agriou all params
 		var closureData = {
 			filterData: filterData,
-			callback: callback || MSQTA._Helpers.defaultCallback,
-			context: context || window,
+			userCallback: userCallback || MSQTA._Helpers.defaultCallback,
+			userContext: userContext || window,
 			self: this
 		};
 	
@@ -204,7 +204,7 @@ MSQTA._Schema.IndexedDB = {
 					} else {
 						// done
 						userDatabase.close();
-						closureData.callback.call( closureData.context, data );
+						closureData.userCallback.call( closureData.userContext, data );
 					}
 				};
 			};
@@ -366,12 +366,12 @@ MSQTA._Schema.IndexedDB = {
 		this._getWithIDBKeyRange( indexData, userCallback, userContext );
 	},
 	
-	_getWithIDBKeyRange: function( range, callback, context ) {
+	_getWithIDBKeyRange: function( range, userCallback, userContext ) {
 		// agriou all params
 		var closureData = {
 			range: range,
-			callback: callback || MSQTA._Helpers.defaultCallback,
-			context: context || window,
+			userCallback: userCallback || MSQTA._Helpers.defaultCallback,
+			userContext: userContext || window,
 			self: this
 		};
 	
@@ -395,7 +395,7 @@ MSQTA._Schema.IndexedDB = {
 				} else {
 					// done
 					userDatabase.close();
-					closureData.callback.call( closureData.context, data );
+					closureData.userCallback.call( closureData.userContext, data );
 				}
 			};
 			
@@ -447,8 +447,8 @@ MSQTA._Schema.IndexedDB = {
 			schema: schemaName,
 			primaryKey: pk,
 			data: datas,
-			callback: userCallback,
-			context: userContext
+			userCallback: userCallback,
+			userContext: userContext
 		};
 		
 		if( ORM._isBatchMode ) {
@@ -463,7 +463,7 @@ MSQTA._Schema.IndexedDB = {
 			schemaName = this._name,
 			schemaFields = this._schemaFields,
 			databaseName = ORM._name,		
-			whereData, setData,
+			whereData, setData, parsedValue,
 			cmpFields, newValues,
 			fieldName, fieldValue,
 			whereClause = {}, setClause = {},
@@ -529,8 +529,8 @@ MSQTA._Schema.IndexedDB = {
 			indexes: this._indexes,
 			primaryKey: this._primaryKey,
 			data: queries,
-			callback: userCallback,
-			context: userContext	
+			userCallback: userCallback,
+			userContext: userContext	
 		};
 		
 		if( ORM._isBatchMode ) {
@@ -578,8 +578,8 @@ MSQTA._Schema.IndexedDB = {
 			schema: schemaName,
 			primaryKey: pk,
 			data: whereClause,
-			callback: userCallback,
-			context: userContext
+			userCallback: userCallback,
+			userContext: userContext
 		};
 		
 		// the only way that whereClause can be empty is that ids param must be a empty []
@@ -602,8 +602,8 @@ MSQTA._Schema.IndexedDB = {
 		ORM._preExec( {
 			type: 'destroy',
 			schema: schemaName,
-			callback: userCallback,
-			context: userContext
+			userCallback: userCallback,
+			userContext: userContext
 		} );
 	},
 /***************************************/
@@ -619,8 +619,8 @@ MSQTA._Schema.IndexedDB = {
 		ORM._preExec( {
 			type: 'empty',
 			schema: schemaName,
-			callback: userCallback,
-			context: userContext
+			userCallback: userCallback,
+			userContext: userContext
 		} );
 	}
 };

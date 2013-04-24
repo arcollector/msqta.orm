@@ -780,7 +780,7 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			databaseName = ORM._name,
 			schemaFields = this._schemaFields,
-			whereData, setData,
+			whereData, setData, parsedValue,
 			cmpFields, newValues,
 			fieldName, fieldValue,
 			whereClause,

@@ -285,7 +285,6 @@ Very useful method, use to wrapped out severals CRUD operations (`put`, `set` an
 Limitations
 ==========
 * MSQTA.ORM don't offers the posibility to do joins, to simulate this situation you have to filter by the field that acts as a foreign key, by using any of the quering methods.
-* Currently IndexedDB don't provide a way to know if a deletion if successful or not, like a *rowsAffected* in WebSQL implementation.
 * Primary keys must be of the type integer and cannot be ommited. Composite primary keys are not supported.
 * Indexes must only be of the type string or numeric.
 * Only a single active connection to a database is supported.
