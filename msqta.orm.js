@@ -678,15 +678,13 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 			}
 			schemaIndexes.push( fieldName );
+			fieldData.index = true;
 		} else {
 			fieldData.index = false;
 		}
 		if( fieldData.unique ) {
-			// put also on indexes
-			if( schemaIndexes.indexOf( fieldName ) === -1 ) {
-				schemaIndexes.push( fieldName );
-			}
 			schemaUniques.push( fieldName );
+			fieldData.unique = true;
 		} else {
 			fieldData.unique = false;
 		}

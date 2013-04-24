@@ -41,35 +41,36 @@
 		tests.push( function() {
 			asyncTest( 'Creating a schema again (new db.Schema)', function() {
 				// this will procude the schema change in the next refresh
-				var ageType = localStorage.getItem( 'ageType' );
-				if( !ageType ) {
-					localStorage.setItem( 'ageType', 'integer' );
-					ageType = 'integer';
+				var indexType = localStorage.getItem( 'indexType' );
+				if( !indexType ) {
+					localStorage.setItem( 'indexType', '1' );
+					indexType = 1;
 				} else {
-					if( ageType === 'integer' ) {
-						localStorage.setItem( 'ageType', 'string' );
+					if( indexType === '1' ) {
+						localStorage.setItem( 'indexType', '0' );
 					} else {
-						localStorage.setItem( 'ageType', 'integer' );
+						localStorage.setItem( 'indexType', '1' );
 					}
 				}
-				console.log( ageType );
+				indexType -= 0;
+				console.log( indexType );
 				schema = new db.Schema( {
 					name: 'clientes',
 					fields: {
 						id: { type: 'integer' },
-						name: { type: 'string', index: true, unique: true },
-						age: { type: ageType, index: true },
-						date: { type: 'date', index: true },
+						name: { type: 'string', index: indexType, unique: false },
+						age: { type: 'integer', index: indexType },
+						date: { type: 'date', index: indexType },
 						comments: { type: 'string' }
 					},
 					primaryKey: 'id'
 				}, { 
-					//forceEmpty: true,
+					//forceDestroy: true,
 					callback: function( statusCode ) {
 						equal( statusCode, true );
 						start();
 				
-						next();
+						//next();
 					}
 				} );
 			} );

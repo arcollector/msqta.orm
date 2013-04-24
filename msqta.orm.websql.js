@@ -28,10 +28,6 @@ MSQTA._ORM.WebSQL = {
 		// store here all the schemaKeepTrack definitions
 		this._schemasDefinition = rows.length ? JSON.parse( rows.item( 0 ).schemas ) : {};
 		
-		// this holds queries to be run when a sql fails
-		// this is used when the multiples queries are connected
-		// but they cannot be runs all in a single transaction
-		this._errorQueries = [];
 		// this holds all the internal queries that are made when
 		// a schema is initialized, these queries are more important
 		// that this._queries in terms at the moment of execute the next query
@@ -317,15 +313,5 @@ MSQTA._ORM.WebSQL = {
 		console.error( 'MSQTA: destroy: deleting a database is not implemented in webSQL standard and will never do.\n To delete a database you need to do manually.' );
 		
 		callback.call( context || window, false );
-	},
-/***************************************/
-/***************************************/
-	_addQueryError: function( query ) {
-		this._errorQueries.push( query );
-		return this._errorQueries.length-0;
-	},
-	
-	_removeQueryError: function( id ) {
-		this._errorQueries.splice( id, 1 );
 	}
 };
