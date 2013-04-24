@@ -779,43 +779,43 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	_exec: function() {
-		var q = this._queries.shift();
+		var queryData = this._queries.shift();
 
 		// especial case
-		if( q.type === 'destroy' ) {
-			this._destroy( q );
+		if( queryData.type === 'destroy' ) {
+			this._destroy( queryData );
 		
 		} else {
-			this._getSchemaObjectStore( q, this._exec2, this );
+			this._getSchemaObjectStore( queryData, this._exec2, this );
 		}
 	},
 	
-	_exec2: function( q ) {
-		var schemaName = q.schema,
-			type = q.type;
+	_exec2: function( queryData ) {
+		var schemaName = queryData.schema,
+			type = queryData.type;
 		
 		if( this.devMode ) {
-			console.log( 'MSQTA-ORM: "' + schemaName + '" schema will be manipulate (' + type + ') with the data (may be undefined):', q.data );
+			console.log( 'MSQTA-ORM: "' + schemaName + '" schema will be manipulate (' + type + ') with the data (may be undefined):', queryData.data );
 		}
 		
-		this['_' + type]( q );
+		this['_' + type]( queryData );
 	},
 	
-	_getSchemaObjectStore: function( q, callback, context ) {
-		var schemaName = q.schema,
+	_getSchemaObjectStore: function( queryData, callback, context ) {
+		var schemaName = queryData.schema,
 			req = this._openUserDatabase();
 		
 		req.onsuccess = function( e ) {
 			var db = this.result,
-				type = q.type,
+				type = queryData.type,
 				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
 				objectStore = transaction.objectStore( schemaName );
 			
 			// keep augmenting q (queryData)
-			q.activeObjectStore = objectStore;
-			q.activeDatabase = db;
+			queryData.activeObjectStore = objectStore;
+			queryData.activeDatabase = db;
 			
-			callback.call( context, q );
+			callback.call( context, queryData );
 		};
 	},
 	

@@ -1,0 +1,158 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>MSQTA.ORM - IndexedDB Implementation - Types</title>
+		<script src="../msqta.orm.js"></script>
+		<script src="../msqta.orm.indexeddb.js"></script>
+		<script src="../msqta.orm.schema.indexeddb.js"></script>
+		<script src="qunit-git.js"></script>
+		<link href="qunit-git.css" rel="stylesheet">
+	</head>
+	<body>
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script>
+		// globals
+		var db, schema, dbOptions = {
+			name: 'test.db',
+			devMode: true,
+			prefered: 'indexeddb'
+		};
+		var tests = [], i = 0;
+		
+		next = function() {
+			if( tests[i] ) {
+				tests[i]();
+				i++;
+			}
+		};
+
+		tests.push( function() {
+			asyncTest( 'Creating/opening a database', function() {
+				db = MSQTA.ORM( dbOptions, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Creating an schema but before dropping the schema', function() {
+				schema = new db.Schema( {
+					name: 'products',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string' },
+						amount: { type: 'float' },
+						quantity: { type: 'integer' },
+						date: { type: 'date' },
+						time: { type: 'time' },
+						datetime: { type: 'datetime' },
+						prices: { type: 'array' },
+						agent: { type: 'object' }
+					},
+					primaryKey: 'id'
+				}, {
+					forceEmpty: true,
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+					
+						next();
+					}
+				} );
+			} );
+		} );
+
+		var putData;
+		tests.push( function() {
+			asyncTest( 'Inserting records on schema', function() {
+				var d = new Date();
+				putData = [
+					{ name: 'Coinor 23kg', amount: 123.12, quantity: 12, date: d, time: d, datetime: d, prices: [ 12, 13, 15, 20 ], agent: { id: 1, name: 'El bala' } },
+					{ name: 'Bonom .3kg', amount: "1.23", quantity: "1", date: '2010-10-10', time: '11:11', datetime: '2010-10-10 11:11', prices: [ 6, 8, 10, 12], agent: { id: 2, name: 'Me gusta la salchicha' } },
+					{ name: "Turron Sabor a ano",  amount: 21, quantity: 12.12, date: '11/11/2010', time: '11:11:11', datetime: '2010-10-10 11:11:11', agent: {} }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 3 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Testing equality on the newly records (date type of may fails, but it is okay)', function() {
+				schema.getByIndex( 'id', [ '1', '2', 3 ], function( records ) {
+					var record,
+						cmp,
+						i = 0, l = records.length;
+						
+					for( ; i < l; i++ ) {
+						record = records[i];
+						cmp = putData[i];
+			
+						equal( record.name, cmp.name );
+						equal( record.amount, cmp.amount );
+						equal( record.quantity, cmp.quantity );
+						equal( record.date, cmp.date );
+						equal( record.time, cmp.time );
+						equal( record.datetime, cmp.datetime );
+						deepEqual( record.prices, cmp.prices || [] );
+						deepEqual( record.agent, cmp.agent || {} );
+					}
+					
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating complex types (object and array)', function() {
+				var setData = {
+					data: {
+						prices: [], 
+						agent: { desc: 'el trolazo' }
+					},
+					target: {
+						id: 1
+					}
+				};
+				schema.set( setData, function( rowsAffected ) {
+					equal( rowsAffected, 1 );
+					// get the updated record
+					schema.getByIndex( 'id', 1, function( records ) {
+						var record = records[0],
+							cmp = putData[0];
+							
+						cmp.prices = setData.data.prices;
+						cmp.agent = setData.data.agent;
+							
+						equal( record.name, cmp.name );
+						equal( record.amount, cmp.amount );
+						equal( record.quantity, cmp.quantity );
+						equal( record.date, cmp.date );
+						equal( record.time, cmp.time );
+						equal( record.datetime, cmp.datetime );
+						deepEqual( record.prices, cmp.prices );
+						deepEqual( record.agent, cmp.agent );
+						
+						start();
+						
+						next();
+					} );
+					
+				} );
+			
+			} );
+		} );
+		
+		next();
+		</script>
+	</body>
+</html>

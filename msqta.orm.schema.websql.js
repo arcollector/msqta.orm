@@ -180,13 +180,17 @@ MSQTA._Schema.WebSQL = {
 				}
 				ORM._schemasDefinition[schemaName] = currentSchemaDefinition;
 				// delete the index to be delete and create the new one (if any) and done
-				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema10, this );
+				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema11, this );
 			
 			} else {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
-				this._updateSchema8();
+				if( this.forceEmpty ) {
+					this._updateSchema10();
+				} else {
+					this._updateSchema9();
+				}
 			}
 		}
 	},
@@ -405,43 +409,47 @@ MSQTA._Schema.WebSQL = {
 		if( this.devMode ) {
 			console.log( '\t\t7) Updating schema process has ended successful' );
 		}
-
-		delete this._tempSchemaName;
-		delete this._offset;
-		delete this._indexesToDelete;
 		
-		if( this.forceEmpty && !this._isEmpty ) {
-			this._updateSchema9();
-		} else {
-			this._updateSchema8();
-		}
+		this._updateSchema8();
 	},
 	
 	_updateSchema8: function() {
 		var ORM = this._ORM;
-		// clean more shit
+		
+		if( this.forceEmpty && !this._isEmpty ) {
+			this._updateSchema10();
+		} else {
+			this._updateSchema9();
+		}
+	},
+	
+	_updateSchema9: function() {
+		// clean
 		delete this._createTableQuery;
 		delete this._indexesToCreate;
 		delete this._isEmpty;
+		delete this._tempSchemaName;
+		delete this._offset;
+		delete this._indexesToDelete;
 		
 		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;
 		delete this._initContext;
 		
 		// continue
-		ORM._initSchemas();
+		this._ORM._initSchemas();
 	},
 	
-	_updateSchema9: function() {
+	_updateSchema10: function() {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema9, isInternal: true } );
 	},
 	
-	_updateSchema10: function() {
+	_updateSchema11: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			indexQueries = [],
@@ -465,7 +473,7 @@ MSQTA._Schema.WebSQL = {
 			}
 		}
 		
-		ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+		ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
