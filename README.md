@@ -17,10 +17,10 @@ The final `.js` will be located in the `./release` directory.
 
 How to use it
 ============
-Just place the following script tag pointing to wherever you have `msqta.orm.js` build file
-
-	<script src="msqta.orm-1.0.0.js"></script>
-	
+Just place a script tag pointing to wherever you have `msqta.orm.js` build file:
+```html
+	<script src="msqta.orm.js"></script>
+```	
 Getting started
 --------------------
 Remember this: **MSQTA.ORM stores js objects into schemas**, and you do NOT need to care about **what is the current version number of my database?**, MSQTA.ORM it will take care of this.
@@ -285,7 +285,7 @@ Very useful method, use to wrapped out severals CRUD operations (`put`, `set` an
 Limitations
 ==========
 * MSQTA.ORM don't offers the posibility to do joins, to simulate this situation you have to filter by the field that acts as a foreign key, by using any of the quering methods.
-* Currently IndexedDB don't provide a way to know if a deletion if successful or not, like a **rowsAffected** in WebSQL implementation.
+* Currently IndexedDB don't provide a way to know if a deletion if successful or not, like a *rowsAffected* in WebSQL implementation.
 * Primary keys must be of the type integer and cannot be ommited. Composite primary keys are not supported.
 * Indexes must only be of the type string or numeric.
 * Only a single active connection to a database is supported.

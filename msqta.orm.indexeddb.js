@@ -78,18 +78,18 @@ MSQTA._ORM.IndexedDB = {
 			if( cursor ) {
 				// cursor.advance() has been triggered
 				if( self.isAdvance ) {
-					self.saveRecord( cursor.value );
 					self.isAdvance = false;
 					baseDB.close();
+					self.saveRecord( cursor.value );
 				// initial case
 				} else if( self.key === 0 ) {
-					self.saveRecord( cursor.value );
 					self.key++;
 					baseDB.close();
+					self.saveRecord( cursor.value );
 				} else {
+					self.isAdvance = true;
 					cursor.advance( self.key );
 					self.key++;
-					self.isAdvance = true;
 				}
 			} else {
 				baseDB.close();
@@ -465,6 +465,7 @@ MSQTA._ORM.IndexedDB = {
 		}
 		
 		var processRecord = function( objectStore, record, cursorPosition ) {
+			// use cursorPosition as the key path
 			return objectStore.add( record, cursorPosition );
 		};
 		
