@@ -678,15 +678,13 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 			}
 			schemaIndexes.push( fieldName );
+			fieldData.index = true;
 		} else {
 			fieldData.index = false;
 		}
 		if( fieldData.unique ) {
-			// put also on indexes
-			if( schemaIndexes.indexOf( fieldName ) === -1 ) {
-				schemaIndexes.push( fieldName );
-			}
 			schemaUniques.push( fieldName );
+			fieldData.unique = true;
 		} else {
 			fieldData.unique = false;
 		}
@@ -788,18 +786,18 @@ MSQTA._ORM.IndexedDB = {
 			if( cursor ) {
 				// cursor.advance() has been triggered
 				if( self.isAdvance ) {
-					self.saveRecord( cursor.value );
 					self.isAdvance = false;
 					baseDB.close();
+					self.saveRecord( cursor.value );
 				// initial case
 				} else if( self.key === 0 ) {
-					self.saveRecord( cursor.value );
 					self.key++;
 					baseDB.close();
+					self.saveRecord( cursor.value );
 				} else {
+					self.isAdvance = true;
 					cursor.advance( self.key );
 					self.key++;
-					self.isAdvance = true;
 				}
 			} else {
 				baseDB.close();
@@ -1175,6 +1173,7 @@ MSQTA._ORM.IndexedDB = {
 		}
 		
 		var processRecord = function( objectStore, record, cursorPosition ) {
+			// use cursorPosition as the key path
 			return objectStore.add( record, cursorPosition );
 		};
 		
@@ -1695,17 +1694,27 @@ MSQTA._ORM.IndexedDB = {
 	
 	_del: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore,
+			objectStore = queryData.objectStore;
+		
+		// indexedb dont provide a way to know if a deletion is successful or not
+		// so, we first get the intial count records and then at end with get the total
+		// count again to compare the changes
+		objectStore.count().onsuccess = function( e ) {
+			queryData.recordsAffected = this.result;
+			self._del2( queryData );
+		};
+	},
+	
+	_del2: function( queryData ) {
+		var self = this,
 			datas = queryData.data,
 			pk = queryData.primaryKey,
-		
-			rowsAffected = 0,
 		
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, rowsAffected );
+				self._del3( queryData );
 				
 			} else {
 				// update the data
@@ -1717,14 +1726,21 @@ MSQTA._ORM.IndexedDB = {
 		var process = function() {
 			var data = datas[currentIndex];
 			objectStore.delete( data[pk] ).onsuccess = function( e ) {
-				if( this.result ) {
-					rowsAffected++;
-				}
 				next();
 			};
 		};
 		
 		next();
+	},
+	
+	_del3: function( queryData ) {
+		var self = this,
+			objectStore = queryData.objectStore;
+		
+		// get the "rowsAffected"
+		objectStore.count().onsuccess = function( e ) {
+			self._done( queryData, queryData.recordsAffected - this.result );
+		};
 	},
 	
 	_empty: function( queryData ) {
@@ -2527,10 +2543,6 @@ MSQTA._ORM.WebSQL = {
 		// store here all the schemaKeepTrack definitions
 		this._schemasDefinition = rows.length ? JSON.parse( rows.item( 0 ).schemas ) : {};
 		
-		// this holds queries to be run when a sql fails
-		// this is used when the multiples queries are connected
-		// but they cannot be runs all in a single transaction
-		this._errorQueries = [];
 		// this holds all the internal queries that are made when
 		// a schema is initialized, these queries are more important
 		// that this._queries in terms at the moment of execute the next query
@@ -2816,16 +2828,6 @@ MSQTA._ORM.WebSQL = {
 		console.error( 'MSQTA: destroy: deleting a database is not implemented in webSQL standard and will never do.\n To delete a database you need to do manually.' );
 		
 		callback.call( context || window, false );
-	},
-/***************************************/
-/***************************************/
-	_addQueryError: function( query ) {
-		this._errorQueries.push( query );
-		return this._errorQueries.length-0;
-	},
-	
-	_removeQueryError: function( id ) {
-		this._errorQueries.splice( id, 1 );
 	}
 };
 MSQTA._Schema.WebSQL = {
@@ -2837,10 +2839,7 @@ MSQTA._Schema.WebSQL = {
 			databaseName = ORM._name,
 			schemaName = this._name,
 			tableStruc = [], primaryKey = this._primaryKey,
-			attrs, indexesSQL = {}, isIndex, isUnique,
-			createTableQuery,
-			// used when forceDestroy property is setted
-			dropTableQuery,
+			attrs, indexesToCreate = {}, isIndex, isUnique,
 			schemaKeepTrack = {};
 		
 		for( fieldName in schemaFields ) {
@@ -2853,15 +2852,14 @@ MSQTA._Schema.WebSQL = {
 				isIndex = fieldData.index;
 				isUnique = fieldData.unique;
 				if( isIndex && isUnique ) {	
-					// CREATE UNIQUE INDEX index_name ON table_name( column_name )
-					indexesSQL[fieldName] = this._getIndexUniqueQuery( schemaName, fieldName );
+					// true means that this is an index is also unique
+					indexesToCreate[fieldName] = true;
 					
 				} else if( isUnique ) {
 					attrs.push( 'UNIQUE' );
 				
 				} else if( isIndex ) {
-					// CREATE INDEX index_name ON table_name( column_name )
-					indexesSQL[fieldName] = this._getIndexQuery( schemaName, fieldName );
+					indexesToCreate[fieldName] = false;
 				}
 			}
 			
@@ -2878,17 +2876,15 @@ MSQTA._Schema.WebSQL = {
 			// for the CREATE TABLE query string
 			tableStruc.push( fieldName + ' ' + schemaFields[fieldName].real + ( attrs.length ? ' ' + attrs.join( ' ' ) : '' ) );
 		}
-		
-		createTableQuery = 'CREATE TABLE "' + schemaName + '" ( ' + tableStruc.join( ', ' ) + ' )';
 		// save a reference for latter usage
-		this._createTableQuery = createTableQuery;
+		this._createTableQuery = 'CREATE TABLE "' + schemaName + '" ( ' + tableStruc.join( ', ' ) + ' )';
 		// this used to detect schema changes
 		this._schemaKeepTrack = schemaKeepTrack;
 		// the indexes
-		this._indexesSQL = indexesSQL;
+		this._indexesToCreate = indexesToCreate;
 		// this will ppoulated (if there the case) in this._checkSchemaChanges()
 		this._indexesToDelete = [];
-		
+
 		ORM._initSchema( this );
 	},
 	
@@ -2902,12 +2898,10 @@ MSQTA._Schema.WebSQL = {
 		
 			registeredSchemaDefinition, currentSchemaDefinition;
 		
-		if( this.forceDestroy ) {
-			this._isSchemaDropped = true;
-			
+		if( this.forceDestroy ) {			
 			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
+			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -2929,12 +2923,18 @@ MSQTA._Schema.WebSQL = {
 		}
 	},
 	
-	_getIndexUniqueQuery: function( schemaName, fieldName ) {
-		return 'CREATE UNIQUE INDEX ' + schemaName + '_' + fieldName + ' ON ' + schemaName + ' ( ' + fieldName + ' )';
+	_getIndexUniqueQuery: function( schemaName, fieldName, alternativeSchemaName ) {
+		// CREATE UNIQUE INDEX index_name ON table_name( column_name )
+		return 'CREATE UNIQUE INDEX ' + this._getIndexName( schemaName, fieldName ) + ' ON ' + ( alternativeSchemaName || schemaName ) + ' ( ' + fieldName + ' )';
 	},
 	
-	_getIndexQuery: function( schemaName, fieldName ) {
-		return  'CREATE INDEX ' + schemaName + '_' + fieldName + ' ON ' + schemaName + ' ( ' + fieldName + ' )';
+	_getIndexQuery: function( schemaName, fieldName, alternativeSchemaName ) {
+		// CREATE INDEX index_name ON table_name( column_name )
+		return  'CREATE INDEX ' + this._getIndexName( schemaName, fieldName ) + ' ON ' + ( alternativeSchemaName || schemaName ) + ' ( ' + fieldName + ' )';
+	},
+	
+	_getIndexName: function( schemaName, fieldName ) {
+		return  schemaName + '_' + fieldName;
 	},
 	
 	_checkSchemaChanges: function( registeredSchemaDefinition, currentSchemaDefinition ) {
@@ -2944,9 +2944,7 @@ MSQTA._Schema.WebSQL = {
 			isNewSchema = false,
 			registeredFieldsData = registeredSchemaDefinition.fields,
 			currentFieldsData = currentSchemaDefinition.fields,
-			registeredFieldData, currentFieldData, fieldName,
-			registeredIndexesSQL = {},
-			currentIndexesSQL = this._indexesSQL;
+			registeredFieldData, currentFieldData, fieldName;
 		
 		for( fieldName in registeredFieldsData ) {
 			registeredFieldData = registeredFieldsData[fieldName];
@@ -2955,18 +2953,12 @@ MSQTA._Schema.WebSQL = {
 			// the field has been deleted
 			if( !currentFieldData ||
 			// type field has changed
-			registeredFieldData.type !== currentFieldData.type ) {
+			registeredFieldData.type !== currentFieldData.type ||
+			// unique chnages requires a new schema
+			registeredFieldData.unique !== currentFieldData.unique ) {
 				isNewSchema = true;
 				break;
 			}
-			
-			// in the meantime, get the index of the regstered
-			if( registeredFieldData.index && registeredFieldData.unique ) {
-				registeredIndexesSQL[fieldName] = this._getIndexUniqueQuery( schemaName, fieldName );
-			} else if( registeredFieldData.index ) {
-				registeredIndexesSQL[fieldName] = this._getIndexQuery( schemaName, fieldName );
-			}
-			
 		}
 		
 		var registeredPK = registeredSchemaDefinition.primaryKey,
@@ -2985,43 +2977,48 @@ MSQTA._Schema.WebSQL = {
 		// the update schema procecss drop the current schema and the create it again
 		if( isNewSchema ) {
 			if( this.devMode ) {
-				console.log( '\tspecified schema differs to the registered one.\n\tStarting process to update schema!' );
+				console.log( '\tspecified schema differs to the registered one, starting update process!' );
 			}
-			// start the damn updateing process
+			// start the damn updating process
 			ORM._schemasDefinition[schemaName] = currentSchemaDefinition;
 			this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema, this );
 		
 		// check for indexes changes
 		} else {
-			var registeredIndexQuery, 
-				currentIndexQuery,
-				indexesToDelete = [];
-
-			for( fieldName in registeredIndexesSQL ) {
-				registeredIndexQuery = registeredIndexesSQL[fieldName];
-				currentIndexQuery = currentIndexesSQL[fieldName];
-				// the index has been dropped
-				if( ( !currentIndexQuery ) ||
-				// still the index exists but now has a different compisition
-				( currentIndexQuery && registeredIndexQuery !== currentIndexQuery ) ) {
-					indexesToDelete.push( fieldName );
-				}
-			}
+			var indexesToDelete = [],
+				indexes = this._indexes,
+				newIndexes = this._indexesToCreate;
 			
-			if( indexesToDelete.length ) {
+			for( fieldName in registeredFieldsData ) {
+				registeredFieldData = registeredFieldsData[fieldName];
+				
+				if( registeredFieldData.index ) {
+					// index drop
+					if( indexes.indexOf( fieldName ) === -1 ) {
+						indexesToDelete.push( fieldName );
+					// remove from indexesToCreate, and then end indexesToCreate will contain only the reail new indexes
+					} else {
+						delete newIndexes[fieldName];
+					}
+				}
+				// we dont test for unique index because a change in a unique field requires a new schema
+			}
+
+			if( indexesToDelete.length || Object.keys( newIndexes ).length ) {
 				this._indexesToDelete = indexesToDelete;
 				
 				if( this.devMode ) {
-					console.log( '\tschema is still the same, but its index(s) has been changed.\n\tMoving directly to step 6!' );
+					console.log( '\tschema is still the same, but its index(s) has been changed, starting updating indexes process!' );
 				}
 				ORM._schemasDefinition[schemaName] = currentSchemaDefinition;
-				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema5, this );
+				// delete the index to be delete and create the new one (if any) and done
+				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema10, this );
 			
 			} else {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
-				this._updateSchema7();
+				this._updateSchema8();
 			}
 		}
 	},
@@ -3033,11 +3030,11 @@ MSQTA._Schema.WebSQL = {
 			createTableQuery = this._createTableQuery;
 		
 		if( this.devMode ) {
-			console.log( '\tupdating is not needed it, starting creation process' );
+			console.log( '\tthe schema is a new one, starting creation process!' );
 		}
 		
 		// create the new table
-		ORM._transaction( { query: [ createTableQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
+		ORM._transaction( { query: createTableQuery, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -3057,32 +3054,79 @@ MSQTA._Schema.WebSQL = {
 			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
 		}
 		
-		ORM._transaction( { query: [ createTempTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
+		ORM._transaction( { query: createTempTableQuery, internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
 	},
 	
 	_updateSchema2: function() {
 		var ORM = this._ORM,
+			databaseName = ORM._name,
+			schemaName = this._name,
+			tempSchemaName = this._tempSchemaName,
+			indexQueries = [],
+			indexesToCreate = this._indexesToCreate;
+		
+		if( this.devMode ) {
+			console.log( '\t\t2) Creating again the indexes (if there is any one)' );
+		}
+		
+		for( fieldName in indexesToCreate ) {
+			// destroy any index that has the same name
+			indexQueries.push( 'DROP INDEX IF EXISTS ' + this._getIndexName( schemaName, fieldName ) );
+			if( indexesToCreate[fieldName] ) {
+				indexQueries.push( this._getIndexUniqueQuery( schemaName, fieldName, tempSchemaName ) );
+			} else {
+				indexQueries.push( this._getIndexQuery( schemaName, fieldName, tempSchemaName ) );
+			}
+		}
+		
+		if( indexQueries.length ) {
+			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema3, isInternal: true } );
+			
+		} else {
+			this._updateSchema3();
+		}
+	},
+	
+	_updateSchema3: function() {
+		var ORM = this._ORM,
 			schemaName = this._name,
 			tempSchemaName = this._tempSchemaName,
 			offset = this._offset,
-			selectQuery,
-			// this is already the new schema
-			schemaFields = this._schemaFields;
+			selectQuery;
 		
-		// this is case that any error ocurr here we can restore, this is because
-		// this porces is not enclosed in a transaction
-		this._queryErrorID = ORM._addQueryError( 'DROP TABLE ' + tempSchemaName );
+		if( this.forceEmpty ) {
+			if( this.devMode ) {
+				console.log( '\t\t"forceEmpty" flag detected, the records will no be saved!' );
+			}
+			// dont clean again
+			this._isEmpty = true;
+			// goto directly to step 
+			this._updateSchema9();
 		
-		// get all the records from the table with the oldSchema
-		selectQuery = 'SELECT * FROM ' + schemaName + ' LIMIT ' + offset + ', 500';		
+		// not need to save records
+		} else if( this.forceDestroy ) {
+			this._updateSchema8();
+			
+		} else {
+			this._updateSchema4();
+		}
+	},
+	
+	_updateSchema4: function() {
+		var ORM = this._ORM,
+			schemaName = this._name,
+			tempSchemaName = this._tempSchemaName,
+			// get all the records from the table with the oldSchema
+			selectQuery =  'SELECT * FROM ' + schemaName + ' LIMIT ' + this._offset + ', 500';
+
 		if( this.devMode ) {
 			console.log( '\t\t2) Fetching all rows from old schema "' + schemaName + '" by 500 rows per time' );
 		}
-	
-		ORM._transaction( { query: [ selectQuery ], internalContext: this, internalCallback: this._updateSchema3, isInternal: true } );
+		
+		ORM._transaction( { query: selectQuery, internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
 	},
 	
-	_updateSchema3: function( results ) {
+	_updateSchema5: function( results ) {
 		var ORM = this._ORM,
 			// this is already the new schema
 			schemaFields = this._schemaFields,
@@ -3102,160 +3146,115 @@ MSQTA._Schema.WebSQL = {
 			i, l,
 			queryData;
 		
-		if( !results ) {
-			throw Error( 'MSQTA.ORM: fatal error on "' + schemaName + '", you have to destroy this schema to continue, use the set the param "forceDestroy" when you create this schema in your code to recreate this schema, everything will be lost!' );
-		}
-		
 		// the old schema is empty
 		if( !rows.length ) {
 			if( this.devMode ) {
-				console.log( '\t\t3) Old schema "' + schemaName + '" has no records on it, moving to next step' );
+				console.log( '\t\t3) Old schema "' + schemaName + '" ' + ( this._offset === 0 ? 'has no records on it' : 'has no more records to be saved' ) + ', moving to next step' );
 			}
-			this._updateSchema4();
-			return;
-		}
-		
-		// prepare the cols in the insert query
-		rowData = rows.item( 0 );
-		for( fieldName in rowData ) {
-			if( schemaFields[fieldName] ) {
-				insertQueryCols.push( fieldName );
-			}
-		}
-		// now check the defaults values for the new rows (rows that in the current does not exists)
-		for( fieldName in schemaFields ) {
-			schemaColData = schemaFields[fieldName];
-			if( insertQueryCols.indexOf( fieldName ) === -1 ) {
-				insertQueryCols.push( fieldName );
-				newValueReplacements.push( schemaColData.zero );
-				newValueTokens.push( '?' );
-			}
-		}
-		
-		for( i = 0, l = rows.length; i < l; i++ ) {
-			t = [];
-			curValueTokens = [];
+			this._updateSchema6();
 			
-			rowData = rows.item( i );
+		} else {
+			// prepare the cols in the insert query
+			rowData = rows.item( 0 );
 			for( fieldName in rowData ) {
-				// get how this fieldName has to been in the new schema
+				if( schemaFields[fieldName] ) {
+					insertQueryCols.push( fieldName );
+				}
+			}
+			// now check the defaults values for the new rows (rows that in the current does not exists)
+			for( fieldName in schemaFields ) {
 				schemaColData = schemaFields[fieldName];
-				if( schemaColData ) {
-					curValueTokens.push( '?' );
-					if( schemaColData.isJSON ) {
-						t.push( rowData[fieldName] );
-					} else {
-						t.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
-					}
+				if( insertQueryCols.indexOf( fieldName ) === -1 ) {
+					insertQueryCols.push( fieldName );
+					newValueReplacements.push( schemaColData.zero );
+					newValueTokens.push( '?' );
 				}
 			}
 			
-			// make a row insert values
-			insertQueries.push( 'INSERT INTO ' + tempSchemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + curValueTokens.concat( newValueTokens ).join( ', ' ) + ' )' );
-			// make the replacements (concat the default value of the columns)
-			values.push( t.concat( newValueReplacements ) );
-			
-		}
-		
-		if( self.devMode ) {
-			console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempSchemaName + '"' );
-		}
-		
-		queryData = {
-			query: insertQueries,
-			replacements: values,
-			internalContext: this,
-			isInternal: true
-		};
-		
-		// get for more records
-		if( l === 500 ) {
-			this._offset += 500;
-			queryData.internalCallback = this._updateSchema2;
-		} else {
-			queryData.internalCallback = this._updateSchema4;
-		}
-		ORM._transaction( queryData );
-	},
-	
-	_updateSchema4: function() {
-		var ORM = this._ORM,
-			schemaName = this._name,
-			dropQuery = 'DROP TABLE '  + schemaName,
-			tempSchemaName = this._tempSchemaName,
-			renameQuery = 'ALTER TABLE ' + tempSchemaName + ' RENAME TO ' + schemaName;
-		
-		if( this.devMode ) {
-			console.log( '\t\t4) Deleting old schema "' + schemaName + '"' );
-			console.log( '\t\t5) Renaming new schema "' + tempSchemaName + '" to "' + schemaName + '"' );
-		}
-		
-		// i need this, because when you drop a table, automatcally its index are dropped aswell,
-		// to avoid this process in _updateSchema5
-		this._isSchemaDropped = true;
-		
-		ORM._transaction( { query: [ dropQuery, renameQuery ], internalContext: this, internalCallback: this._updateSchema5, isInternal: true } );
-	},
-	
-	_updateSchema5: function() {
-		var ORM = this._ORM,
-			databaseName = ORM._name,
-			indexQueries = [],
-			indexesToDelete = this._indexesToDelete,
-			fieldName, indexesSQL = this._indexesSQL;
-		
-		if( this.devMode ) {
-			console.log( '\t\t6) Creating/removing index(s) (if there is any one)' );
-		}
-		
-		// not need to drop an index is the referenced table has been dropped
-		if( !this._isSchemaDropped ) {
-			while( indexesToDelete.length ) {
-				indexQueries.push( 'DROP INDEX ' + databaseName + '_' + indexesToDelete.shift() );
+			for( i = 0, l = rows.length; i < l; i++ ) {
+				t = [];
+				curValueTokens = [];
+				
+				rowData = rows.item( i );
+				for( fieldName in rowData ) {
+					// get how this fieldName has to been in the new schema
+					schemaColData = schemaFields[fieldName];
+					if( schemaColData ) {
+						curValueTokens.push( '?' );
+						if( schemaColData.isJSON ) {
+							t.push( rowData[fieldName] );
+						} else {
+							t.push( schemaColData.sanitizer( rowData[fieldName], schemaColData.zero ) );
+						}
+					}
+				}
+				
+				// make a row insert values
+				insertQueries.push( 'INSERT INTO ' + tempSchemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) VALUES ( ' + curValueTokens.concat( newValueTokens ).join( ', ' ) + ' )' );
+				// make the replacements (concat the default value of the columns)
+				values.push( t.concat( newValueReplacements ) );	
 			}
-		} else {
-			// no more need it
-			delete this._isSchemaDropped;
-		}
-		
-		// DROP INDEX queries + CREATE INDEX queries
-		for( fieldName in indexesSQL ) {
-			indexQueries.push( indexesSQL[fieldName] );
-		}
-		
-		if( indexQueries.length ) {
-			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema6, isInternal: true } );
 			
-		} else {
-			this._updateSchema6();
+			if( this.devMode ) {
+				console.log( '\t\t3) Inserting rows from old schema "' + schemaName + '" into the new schema "' + tempSchemaName + '" (rows may fail if they violated any constraints)' );
+			}
+			
+			queryData = {
+				query: insertQueries,
+				replacements: values,
+				internalContext: this,
+				isInternal: true
+			};
+			
+			// get for more records
+			if( l === 500 ) {
+				this._offset += 500;
+				queryData.internalCallback = this._updateSchema4;
+			} else {
+				queryData.internalCallback = this._updateSchema6;
+			}
+			ORM._transaction( queryData );
 		}
 	},
 	
 	_updateSchema6: function() {
+		var ORM = this._ORM,
+			schemaName = this._name,
+			dropQuery = 'DROP TABLE ' + schemaName,
+			tempSchemaName = this._tempSchemaName,
+			renameQuery = 'ALTER TABLE ' + tempSchemaName + ' RENAME TO ' + schemaName;
+		
+		if( this.devMode ) {
+			console.log( '\t\t4) Deleting old schema "' + schemaName + '" (any index left will be dropped aswell)' );
+			console.log( '\t\t5) Renaming new schema "' + tempSchemaName + '" to "' + schemaName + '"' );
+		}
+		
+		ORM._transaction( { query: [ dropQuery, renameQuery ], internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+	},
+	
+	_updateSchema7: function() {
 		var ORM = this._ORM;
 		if( this.devMode ) {
 			console.log( '\t\t7) Updating schema process has ended successful' );
 		}
 
-		// clean all
-		ORM._removeQueryError( this._queryErrorID );
 		delete this._tempSchemaName;
 		delete this._offset;
-		delete this._queryErrorID;
 		delete this._indexesToDelete;
 		
-		if( this.forceEmpty ) {
-			this._updateSchema8();
+		if( this.forceEmpty && !this._isEmpty ) {
+			this._updateSchema9();
 		} else {
-			this._updateSchema7();
+			this._updateSchema8();
 		}
 	},
 	
-	_updateSchema7: function() {
+	_updateSchema8: function() {
 		var ORM = this._ORM;
 		// clean more shit
 		delete this._createTableQuery;
-		delete this._indexesSQL;
+		delete this._indexesToCreate;
+		delete this._isEmpty;
 		
 		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;
@@ -3265,13 +3264,40 @@ MSQTA._Schema.WebSQL = {
 		ORM._initSchemas();
 	},
 	
-	_updateSchema8: function() {
+	_updateSchema9: function() {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
 		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+	},
+	
+	_updateSchema10: function() {
+		var ORM = this._ORM,
+			schemaName = this._name,
+			indexQueries = [],
+			indexesToDelete = this._indexesToDelete,
+			fieldName, indexesToCreate = this._indexesToCreate;
+		
+		if( this.devMode ) {
+			console.log( '\t\t2) Creating/removing index(s) (if there is any)' );
+		}
+		
+		while( indexesToDelete.length ) {
+			indexQueries.push( 'DROP INDEX ' + this._getIndexName( schemaName, indexesToDelete.shift() ) );
+		}
+		
+		// DROP INDEX queries + CREATE INDEX queries
+		for( fieldName in indexesToCreate ) {
+			if( indexesToCreate[fieldName] ) {
+				indexQueries.push( this._getIndexUniqueQuery( schemaName, fieldName ) );
+			} else {
+				indexQueries.push( this._getIndexQuery( schemaName, fieldName ) );
+			}
+		}
+		
+		ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {

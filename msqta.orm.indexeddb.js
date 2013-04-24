@@ -986,17 +986,27 @@ MSQTA._ORM.IndexedDB = {
 	
 	_del: function( queryData ) {
 		var self = this,
-			objectStore = queryData.objectStore,
+			objectStore = queryData.objectStore;
+		
+		// indexedb dont provide a way to know if a deletion is successful or not
+		// so, we first get the intial count records and then at end with get the total
+		// count again to compare the changes
+		objectStore.count().onsuccess = function( e ) {
+			queryData.recordsAffected = this.result;
+			self._del2( queryData );
+		};
+	},
+	
+	_del2: function( queryData ) {
+		var self = this,
 			datas = queryData.data,
 			pk = queryData.primaryKey,
-		
-			rowsAffected = 0,
 		
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, rowsAffected );
+				self._del3( queryData );
 				
 			} else {
 				// update the data
@@ -1008,14 +1018,21 @@ MSQTA._ORM.IndexedDB = {
 		var process = function() {
 			var data = datas[currentIndex];
 			objectStore.delete( data[pk] ).onsuccess = function( e ) {
-				if( this.result ) {
-					rowsAffected++;
-				}
 				next();
 			};
 		};
 		
 		next();
+	},
+	
+	_del3: function( queryData ) {
+		var self = this,
+			objectStore = queryData.objectStore;
+		
+		// get the "rowsAffected"
+		objectStore.count().onsuccess = function( e ) {
+			self._done( queryData, queryData.recordsAffected - this.result );
+		};
 	},
 	
 	_empty: function( queryData ) {
