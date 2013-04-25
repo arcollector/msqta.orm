@@ -286,5 +286,5 @@ Limitations
 ==========
 * MSQTA.ORM don't offers the posibility to do joins, to simulate this situation you have to filter by the field that acts as a foreign key, by using any of the quering methods.
 * Primary keys must be of the type integer and cannot be ommited. Composite primary keys are not supported.
-* Indexes must only be of the type string or numeric.
+* Indexes must be of any type except array and object.
 * Only a single active connection to a database is supported.

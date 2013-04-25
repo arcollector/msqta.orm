@@ -269,7 +269,7 @@ MSQTA._Schema.IndexedDB = {
 			this._getAll( { 
 				callback: filterCallback, 
 				comparator: indexData.pk || indexData.index,
-				fields: fields,
+				fields: fields
 			}, userCallback, userContext );
 		}
 	},

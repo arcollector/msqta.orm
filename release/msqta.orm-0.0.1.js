@@ -3,9 +3,11 @@ var MSQTA = MSQTA || {};
 /***************************************/
 MSQTA._IndexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 MSQTA._IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
-if( !MSQTA._IDBTransaction.READ_WRITE || !MSQTA._IDBTransaction.READ_ONLY ) {
-	MSQTA._IDBTransaction.READ_WRITE = 'readwrite';
-	MSQTA._IDBTransaction.READ_ONLY = 'readonly';
+if( MSQTA._IDBTransaction && ( !MSQTA._IDBTransaction.READ_WRITE || !MSQTA._IDBTransaction.READ_ONLY ) ) {
+	MSQTA._IDBTransaction = {
+		READ_WRITE: 'readwrite',
+		READ_ONLY: 'readonly'
+	};
 }
 MSQTA._IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
 /***************************************/
@@ -674,7 +676,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	for( fieldName in schemaFields ) {
 		fieldData = schemaFields[fieldName];
 		if( fieldData.index ) {
-			if( !/^(integer|float|string|date|time|datetime)$/.test( fieldData.type ) ) {
+			if( !/^(integer|float|string|date|time|datetime|boolean)$/.test( fieldData.type ) ) {
 				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 			}
 			schemaIndexes.push( fieldName );
@@ -2158,7 +2160,7 @@ MSQTA._Schema.IndexedDB = {
 			this._getAll( { 
 				callback: filterCallback, 
 				comparator: indexData.pk || indexData.index,
-				fields: fields,
+				fields: fields
 			}, userCallback, userContext );
 		}
 	},

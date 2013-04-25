@@ -62,7 +62,7 @@ var msqtaWebSQLORM = currentDir + 'msqta.orm.websql.js';
 var msqtaWebSQLSchema = currentDir + 'msqta.orm.schema.websql.js';
 
 
-var letters = [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'aa', 'bb', 'cc', 'dd', 'ee', 'ff', 'gg', 'hh', 'ii', 'jj', 'kk', 'll', 'mm', 'nn', 'oo', 'pp', 'qq', 'rr', 'ss', 'tt', 'uu', 'vv', 'ww', 'xx', 'yy', 'zz', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9', 'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7', 'i8', 'i9', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8', 'j9', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8', 'k9', 'l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9' ];
+var letters = [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'aa', 'bb', 'cc', 'dd', 'ee', 'ff', 'gg', 'hh', 'ii', 'jj', 'kk', 'll', 'mm', 'nn', 'oo', 'pp', 'qq', 'rr', 'ss', 'tt', 'uu', 'vv', 'ww', 'xx', 'yy', 'zz', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9', 'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7', 'i8', 'i9', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8', 'j9', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8', 'k9', 'l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'o7', 'o8', 'o9', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9' ];
 var currentLetter = 0;
 
 // ************************************** //
@@ -158,10 +158,15 @@ function buildFull() {
 		filter: [ removeDevMode, replaceErrors, replaceKeywords, replaceWebSQLKeywords, replaceIndexedDBKeywords ],
 		dest: dest,
 	} );
-	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!", T = "__msqta__", D = "databases", I = "name", C = "dump";\n' + dest.value.replace( /'__msqta__'/g, 'T' ).replace( /'databases'/g, 'D' ).replace( /'name'/g, 'I' ).replace( /'dump'/g, 'C' ) + '\nwindow.MSQTA = MSQTA;\n})( window );'
+	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!", T = "__msqta__", D = "databases", I = "name", C = "dump";\n' + dest.value.replace( /'__msqta__'/g, 'T' ).replace( /'databases'/g, 'D' ).replace( /'name'/g, 'I' ).replace( /'dump'/g, 'C' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
 		filter: copy.filter.uglifyjs,
+		dest: minified
+	} );
+	copy( {
+		source: [ minified, { value: ';' } ],
 		dest: getMsqtaBuildName( true )
 	} );
 	
@@ -188,10 +193,15 @@ function buildWebSQL() {
 		dest: dest,
 	} );
 	
-	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!";\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );'
+	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!";\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
 		filter: copy.filter.uglifyjs,
+		dest: minified
+	} );
+	copy( {
+		source: [ minified, { value: ';' } ],
 		dest: getMsqtaBuildName( true )
 	} );
 }
@@ -217,13 +227,17 @@ function buildIndexedDB() {
 		dest: getMsqtaBuildName( true )
 	} );
 	
-	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!";\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );'
+	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!";\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
 		filter: copy.filter.uglifyjs,
+		dest: minified
+	} );
+	copy( {
+		source: [ minified, { value: ';' } ],
 		dest: getMsqtaBuildName( true )
 	} );
-
 }
 
 // ************************************** //
