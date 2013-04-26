@@ -302,6 +302,6 @@ MSQTA._ORM.WebSQL = {
 	destroy: function( callback, context ) {
 		console.error( 'MSQTA: destroy: deleting a database is not implemented in webSQL standard and will never do.\n To delete a database you need to do manually.' );
 		
-		( callback || MSQTA._Helpers.noop).call( context || window, false );
+		( callback || MSQTA._Helpers.noop ).call( context || window, false );
 	}
 };

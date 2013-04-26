@@ -101,7 +101,7 @@ function replaceKeywords( value ) {
 		value = value.replace( new RegExp( '\\b' + all[i] + '\\b', 'g' ), firstChar + letters[currentLetter] );
 		currentLetter++;
 	}
-	return value;	
+	return value;
 }
 
 function replaceWebSQLKeywords( value ) {

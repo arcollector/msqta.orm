@@ -599,7 +599,7 @@ MSQTA.ORM = function( settings, callback, context ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}
 	
-	settings.callback = typeof callback === 'function' ? callback : MSQTA._Helpers.defaultCallback;
+	settings.callback = callback || MSQTA._Helpers.defaultCallback;
 	settings.context = context || window;
 	
 	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
@@ -709,6 +709,6 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	// options
 	this._isForceDestroy = options.forceDestroy;
 	this._isForceEmpty = this._isForceDestroy ? false : options.forceEmpty;
-	this._initCallback = typeof options.callback === 'function' ? options.callback : MSQTA._Helpers.defaultCallback;
+	this._initCallback = options.callback || MSQTA._Helpers.defaultCallback;
 	this._initContext = options.context || window;
 };
