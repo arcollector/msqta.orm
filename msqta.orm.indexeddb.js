@@ -222,7 +222,7 @@ MSQTA._ORM.IndexedDB = {
 		
 		req.onsuccess = function( e ) {
 			// ahora debo borrar toda esa information de __msqta__.databases
-			req = MSQTA._IndexedDB.open( '__msqta__' );
+			req = self._openTestigoDatabase();
 			req.onsuccess = function( e ) {
 				var db = this.result,
 					transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
@@ -306,7 +306,7 @@ MSQTA._ORM.IndexedDB = {
 			this._createSchema();
 			
 		// destroy directly the shcema
-		} else if( Schema.forceDestroy ) {
+		} else if( Schema._isForceDestroy ) {
 			if( this.devMode ) {
 				console.log( 'MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the database "' + databaseName + '", then it will recreate again' );
 			}
@@ -326,7 +326,7 @@ MSQTA._ORM.IndexedDB = {
 					console.log( '\tnew changes has been detected, proceeding to update its schema!' );
 				}
 				
-				if( Schema.forceEmpty ) {
+				if( Schema._isForceEmpty ) {
 					if( this.devMode ) {
 						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
 					}
@@ -341,7 +341,7 @@ MSQTA._ORM.IndexedDB = {
 					console.log( '\tno new changes has been detected!' );
 				}
 				
-				if( Schema.forceEmpty ) {
+				if( Schema._isForceEmpty ) {
 					if( this.devMode ) {
 						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
 					}
@@ -681,6 +681,8 @@ MSQTA._ORM.IndexedDB = {
 		// clean
 		delete Schema._initCallback;
 		delete Schema._initContext;
+		delete Schema._isForceDestroy;
+		delete Schema._isForceEmpty;
 		delete this._currentSchema;
 		
 		// continue with more shit

@@ -610,7 +610,6 @@ MSQTA._ORM = function( settings ) {
 	var databaseName = this._name = settings.name;
 	
 	this.devMode = settings.devMode || false;
-	this.forceDestroy = settings.forceDestroy;
 	
 	// put here all query to be executed
 	this._queries = [];
@@ -632,7 +631,7 @@ MSQTA._ORM = function( settings ) {
 	this._initContext = settings.context;
 
 	// start the shit
-	if( this.forceDestroy ) {
+	if( settings.forceDestroy ) {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: "forceDestroy" flag detected for the "' + databaseName + '" database, initializing process, tthen it will recreate again' );
 		}
@@ -708,8 +707,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	this._primaryKey = pk;
 	this._fieldsName = Object.keys( schemaFields );
 	// options
-	this.forceDestroy = options.forceDestroy;
-	this.forceEmpty = this.forceDestroy ? false : options.forceEmpty;
+	this._isForceDestroy = options.forceDestroy;
+	this._isForceEmpty = this._isForceDestroy ? false : options.forceEmpty;
 	this._initCallback = typeof options.callback === 'function' ? options.callback : MSQTA._Helpers.defaultCallback;
 	this._initContext = options.context || window;
 };

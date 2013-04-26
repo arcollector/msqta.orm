@@ -63,7 +63,7 @@ MSQTA._Schema.WebSQL = {
 		
 			registeredSchemaDefinition, currentSchemaDefinition;
 		
-		if( this.forceDestroy ) {			
+		if( this._isForceDestroy ) {			
 			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
 			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
@@ -183,7 +183,7 @@ MSQTA._Schema.WebSQL = {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
-				if( this.forceEmpty ) {
+				if( this._isForceEmpty ) {
 					this._updateSchema10();
 				} else {
 					this._updateSchema9();
@@ -263,7 +263,7 @@ MSQTA._Schema.WebSQL = {
 			offset = this._offset,
 			selectQuery;
 		
-		if( this.forceEmpty ) {
+		if( this._isForceEmpty ) {
 			if( this.devMode ) {
 				console.log( '\t\t"forceEmpty" flag detected, the records will no be saved!' );
 			}
@@ -273,7 +273,7 @@ MSQTA._Schema.WebSQL = {
 			this._updateSchema9();
 		
 		// not need to save records
-		} else if( this.forceDestroy ) {
+		} else if( this._isForceDestroy ) {
 			this._updateSchema8();
 			
 		} else {
@@ -413,7 +413,7 @@ MSQTA._Schema.WebSQL = {
 	_updateSchema8: function() {
 		var ORM = this._ORM;
 		
-		if( this.forceEmpty && !this._isEmpty ) {
+		if( this._isForceEmpty && !this._isEmpty ) {
 			this._updateSchema10();
 		} else {
 			this._updateSchema9();
@@ -428,6 +428,8 @@ MSQTA._Schema.WebSQL = {
 		delete this._tempSchemaName;
 		delete this._offset;
 		delete this._indexesToDelete;
+		delete this._isForceDestroy;
+		delete this._isForceEmpty;
 		
 		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;

@@ -610,7 +610,6 @@ MSQTA._ORM = function( settings ) {
 	var databaseName = this._name = settings.name;
 	
 	this.devMode = settings.devMode || false;
-	this.forceDestroy = settings.forceDestroy;
 	
 	// put here all query to be executed
 	this._queries = [];
@@ -632,7 +631,7 @@ MSQTA._ORM = function( settings ) {
 	this._initContext = settings.context;
 
 	// start the shit
-	if( this.forceDestroy ) {
+	if( settings.forceDestroy ) {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: "forceDestroy" flag detected for the "' + databaseName + '" database, initializing process, tthen it will recreate again' );
 		}
@@ -685,6 +684,11 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			fieldData.index = false;
 		}
 		if( fieldData.unique ) {
+			// an unique needs to be an index also
+			if( schemaIndexes.indexOf( fieldName ) === -1 ) {
+				schemaIndexes.push( fieldName );
+				fieldData.index = true;
+			}
 			schemaUniques.push( fieldName );
 			fieldData.unique = true;
 		} else {
@@ -703,8 +707,8 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	this._primaryKey = pk;
 	this._fieldsName = Object.keys( schemaFields );
 	// options
-	this.forceDestroy = options.forceDestroy;
-	this.forceEmpty = this.forceDestroy ? false : options.forceEmpty;
+	this._isForceDestroy = options.forceDestroy;
+	this._isForceEmpty = this._isForceDestroy ? false : options.forceEmpty;
 	this._initCallback = typeof options.callback === 'function' ? options.callback : MSQTA._Helpers.defaultCallback;
 	this._initContext = options.context || window;
 };
@@ -932,7 +936,7 @@ MSQTA._ORM.IndexedDB = {
 		
 		req.onsuccess = function( e ) {
 			// ahora debo borrar toda esa information de __msqta__.databases
-			req = MSQTA._IndexedDB.open( '__msqta__' );
+			req = self._openTestigoDatabase();
 			req.onsuccess = function( e ) {
 				var db = this.result,
 					transaction = db.transaction( [ 'databases' ], MSQTA._IDBTransaction.READ_WRITE ),
@@ -1016,7 +1020,7 @@ MSQTA._ORM.IndexedDB = {
 			this._createSchema();
 			
 		// destroy directly the shcema
-		} else if( Schema.forceDestroy ) {
+		} else if( Schema._isForceDestroy ) {
 			if( this.devMode ) {
 				console.log( 'MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the database "' + databaseName + '", then it will recreate again' );
 			}
@@ -1036,7 +1040,7 @@ MSQTA._ORM.IndexedDB = {
 					console.log( '\tnew changes has been detected, proceeding to update its schema!' );
 				}
 				
-				if( Schema.forceEmpty ) {
+				if( Schema._isForceEmpty ) {
 					if( this.devMode ) {
 						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
 					}
@@ -1051,7 +1055,7 @@ MSQTA._ORM.IndexedDB = {
 					console.log( '\tno new changes has been detected!' );
 				}
 				
-				if( Schema.forceEmpty ) {
+				if( Schema._isForceEmpty ) {
 					if( this.devMode ) {
 						console.log( '\t"forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the database "' + databaseName + '", all records will be lost!' );
 					}
@@ -1391,6 +1395,8 @@ MSQTA._ORM.IndexedDB = {
 		// clean
 		delete Schema._initCallback;
 		delete Schema._initContext;
+		delete Schema._isForceDestroy;
+		delete Schema._isForceEmpty;
 		delete this._currentSchema;
 		
 		// continue with more shit
@@ -1563,6 +1569,10 @@ MSQTA._ORM.IndexedDB = {
 			}
 		};
 		
+		var abort = function() {
+			self._done( queryData, false );
+		};
+		
 		var process = function() {
 			var data = datas[currentIndex],
 				req = objectStore.add( data );
@@ -1573,19 +1583,8 @@ MSQTA._ORM.IndexedDB = {
 			};
 			
 			req.onerror = function( e ) {
-				// dont re open the connection is we are in the last iteration
-				if( currentIndex !== totalQueries ) {
-					queryData.activeDatabase.close();
-					// restore connection
-					self._getSchemaObjectStore( queryData, function() {
-						// reset the object store
-						objectStore = queryData.activeObjectStore;
-						next( false );
-					}, self );
-				
-				} else {
-					next( false );
-				}
+				// a violation constraints has been produced
+				abort();
 			};
 		};
 		
@@ -1614,6 +1613,10 @@ MSQTA._ORM.IndexedDB = {
 			}
 		};
 		
+		var abort = function() {
+			self._done( queryData, false );
+		};
+		
 		var process = function() {
 			var data = datas[currentIndex],
 				setData = data.data,
@@ -1639,7 +1642,8 @@ MSQTA._ORM.IndexedDB = {
 							next();
 						};
 						req.onerror = function( e ) {
-							next( false );
+							// a violation constraints has been ocurred
+							abort();
 						};
 					} else {
 						next();
@@ -1676,7 +1680,8 @@ MSQTA._ORM.IndexedDB = {
 								cursor.continue();
 							};
 							req.onerror = function( e ) {
-								cursor.continue();
+								// a violation constraints has been ocurred
+								abort();
 							};
 							
 						} else {
@@ -2689,15 +2694,8 @@ MSQTA._ORM.WebSQL = {
 			self._results( results );
 		};
 		
-		// still more queries to process
-		var errorAndContinue = function( tx, error ) {
+		var error = function( error ) {
 			self._error( error );
-		};
-		
-		// error in the last executed query
-		var errorAndDone = function( tx, error ) {
-			self._error( error );
-			// done
 			self._results( false );
 		};
 		
@@ -2710,9 +2708,10 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, l ? errorAndContinue : errorAndDone );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success );
 			}
-		} );
+			
+		}, error );
 	},
 	
 	/**
@@ -2823,13 +2822,9 @@ MSQTA._ORM.WebSQL = {
 /***************************************/
 /***************************************/
 	destroy: function( callback, context ) {
-		if( typeof callback !== 'function' ) {
-			callback = MSQTA._Helpers.noop;
-		}
-		
 		console.error( 'MSQTA: destroy: deleting a database is not implemented in webSQL standard and will never do.\n To delete a database you need to do manually.' );
 		
-		callback.call( context || window, false );
+		( callback || MSQTA._Helpers.noop).call( context || window, false );
 	}
 };
 MSQTA._Schema.WebSQL = {
@@ -2856,9 +2851,6 @@ MSQTA._Schema.WebSQL = {
 				if( isIndex && isUnique ) {	
 					// true means that this is an index is also unique
 					indexesToCreate[fieldName] = true;
-					
-				} else if( isUnique ) {
-					attrs.push( 'UNIQUE' );
 				
 				} else if( isIndex ) {
 					indexesToCreate[fieldName] = false;
@@ -2900,7 +2892,7 @@ MSQTA._Schema.WebSQL = {
 		
 			registeredSchemaDefinition, currentSchemaDefinition;
 		
-		if( this.forceDestroy ) {			
+		if( this._isForceDestroy ) {			
 			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
 			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
@@ -3020,7 +3012,7 @@ MSQTA._Schema.WebSQL = {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
-				if( this.forceEmpty ) {
+				if( this._isForceEmpty ) {
 					this._updateSchema10();
 				} else {
 					this._updateSchema9();
@@ -3100,7 +3092,7 @@ MSQTA._Schema.WebSQL = {
 			offset = this._offset,
 			selectQuery;
 		
-		if( this.forceEmpty ) {
+		if( this._isForceEmpty ) {
 			if( this.devMode ) {
 				console.log( '\t\t"forceEmpty" flag detected, the records will no be saved!' );
 			}
@@ -3110,7 +3102,7 @@ MSQTA._Schema.WebSQL = {
 			this._updateSchema9();
 		
 		// not need to save records
-		} else if( this.forceDestroy ) {
+		} else if( this._isForceDestroy ) {
 			this._updateSchema8();
 			
 		} else {
@@ -3250,7 +3242,7 @@ MSQTA._Schema.WebSQL = {
 	_updateSchema8: function() {
 		var ORM = this._ORM;
 		
-		if( this.forceEmpty && !this._isEmpty ) {
+		if( this._isForceEmpty && !this._isEmpty ) {
 			this._updateSchema10();
 		} else {
 			this._updateSchema9();
@@ -3265,6 +3257,8 @@ MSQTA._Schema.WebSQL = {
 		delete this._tempSchemaName;
 		delete this._offset;
 		delete this._indexesToDelete;
+		delete this._isForceDestroy;
+		delete this._isForceEmpty;
 		
 		this._initCallback.call( this._initContext, true );
 		delete this._initCallback;
@@ -3585,7 +3579,7 @@ MSQTA._Schema.WebSQL = {
 				insertQueryValuesTokens.push( '?' );
 			}
 			insertQueryValues.push( values );
-			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
+			insertQueries.push( 'INSERT OR ROLLBACK INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
 		queryData = { 
@@ -3684,7 +3678,7 @@ MSQTA._Schema.WebSQL = {
 			}
 			// whereClause can be empty
 			
-			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			queries.push( 'UPDATE OR ROLLBACK ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
 			values.push( t );
 		}
 		

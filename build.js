@@ -85,17 +85,17 @@ function removeDevMode( value ) {
 }
 
 function replaceErrors( value ) {
-	return value.replace( /MSQTA\._Errors\.[^;]+?;/g, "throw Error( E );" ).replace( /MSQTA\._Errors = {[\s\S]+?};/, '' ).replace( /throw Error\([^;]+?;/g, "throw Error( E );" );
+	return value.replace( /MSQTA\._Errors\.[^;]+?;/g, "throw E;" ).replace( /MSQTA\._Errors = {[\s\S]+?};/, '' ).replace( /throw Error\([^;]+?;/g, "throw E;" );
 }
 
 function replaceKeywords( value ) {
 	var methods = [ 'noop', 'defaultCallback', 'getCaster', 'castObj', 'castDate', 'castDate', 'castTime', 'castDateTime', 'castBoolean', 'castGeneric', 'dimSchemaInstance', 'dimORMInstance', 'getORMPrototype', 'instantiateSchema', 'getValueBySchema', 'resetSchemaAt', '_getValueBySchema', '_resetSchemaAt', 'getSanitizer', 'sanitizeString', 'sanitizeInt', 'sanitizeDate', 'sanitizeTime', 'sanitizeDatetime', 'sanitizeObj', 'sanitizeBoolean', 'sanitizeGeneric', 'zero', 'sanitizer', 'toJS', 'isDate', 'abstract', 'real', 'isJSON' ];
-	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args', 'filterCallback', 'userCallback', 'userContext', 'activeObjectStore', 'activeDatabase' ];
+	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args', 'filterCallback', 'userCallback', 'userContext', '_isForceDestroy', '_isForceEmpty' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
 		firstChar = all[i].charAt( 0 );
-		if( firstChar !== '_' || firstChar !== '.' ) {
+		if( firstChar !== '_'  && firstChar !== '.' ) {
 			firstChar = '';
 		}
 		value = value.replace( new RegExp( '\\b' + all[i] + '\\b', 'g' ), firstChar + letters[currentLetter] );
@@ -111,7 +111,7 @@ function replaceWebSQLKeywords( value ) {
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
 		firstChar = all[i].charAt( 0 );
-		if( firstChar !== '_' || firstChar !== '.' ) {
+		if( firstChar !== '_'  && firstChar !== '.' ) {
 			firstChar = '';
 		}
 		value = value.replace( new RegExp( '\\b' + all[i] + '\\b', 'g' ), firstChar + letters[currentLetter] );
@@ -122,12 +122,12 @@ function replaceWebSQLKeywords( value ) {
 
 function replaceIndexedDBKeywords( value ) {
 	var methods = [ '_initSchemas2', '_updateUserDatabaseRecord', '_initSchemaFail', '_createSchemaForReal', '_nextSchemaToInit', '_saveBranch', '_openUserDatabaseForChanges', '_openUserDatabase', '_preExec', '_exec', '_done', '_destroy2', '_getAll', '_getWithIDBKeyRange', 'openUserDB', 'openTestigoDB', 'getCursor', 'init', 'getRecord', 'saveRecord', 'nextRecord', 'done', '_openTestigoDatabase', '_getSchemaObjectStore', '_del2', '_del3' ];
-	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected', 'indexes' ];
+	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected', 'indexes', 'activeObjectStore', 'activeDatabase' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
 		firstChar = all[i].charAt( 0 );
-		if( firstChar !== '_' || firstChar !== '.' ) {
+		if( firstChar !== '_' && firstChar !== '.' ) {
 			firstChar = '';
 		}
 		value = value.replace( new RegExp( '\\b' + all[i] + '\\b', 'g' ), firstChar + letters[currentLetter] );
