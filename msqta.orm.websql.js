@@ -172,15 +172,8 @@ MSQTA._ORM.WebSQL = {
 			self._results( results );
 		};
 		
-		// still more queries to process
-		var errorAndContinue = function( tx, error ) {
+		var error = function( error ) {
 			self._error( error );
-		};
-		
-		// error in the last executed query
-		var errorAndDone = function( tx, error ) {
-			self._error( error );
-			// done
 			self._results( false );
 		};
 		
@@ -193,9 +186,10 @@ MSQTA._ORM.WebSQL = {
 				if( self.devMode ) {
 					console.log( 'MSQTA-ORM: executing the query: \n\t' + q );
 				}
-				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success, l ? errorAndContinue : errorAndDone );
+				tx.executeSql( q, queryData.replacements ? queryData.replacements.shift() : [], l ? noop : success );
 			}
-		} );
+			
+		}, error );
 	},
 	
 	/**

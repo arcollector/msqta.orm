@@ -853,6 +853,10 @@ MSQTA._ORM.IndexedDB = {
 			}
 		};
 		
+		var abort = function() {
+			self._done( queryData, false );
+		};
+		
 		var process = function() {
 			var data = datas[currentIndex],
 				req = objectStore.add( data );
@@ -863,19 +867,8 @@ MSQTA._ORM.IndexedDB = {
 			};
 			
 			req.onerror = function( e ) {
-				// dont re open the connection is we are in the last iteration
-				if( currentIndex !== totalQueries ) {
-					queryData.activeDatabase.close();
-					// restore connection
-					self._getSchemaObjectStore( queryData, function() {
-						// reset the object store
-						objectStore = queryData.activeObjectStore;
-						next( false );
-					}, self );
-				
-				} else {
-					next( false );
-				}
+				// a violation constraints has been produced
+				abort();
 			};
 		};
 		
@@ -904,6 +897,10 @@ MSQTA._ORM.IndexedDB = {
 			}
 		};
 		
+		var abort = function() {
+			self._done( queryData, false );
+		};
+		
 		var process = function() {
 			var data = datas[currentIndex],
 				setData = data.data,
@@ -929,7 +926,8 @@ MSQTA._ORM.IndexedDB = {
 							next();
 						};
 						req.onerror = function( e ) {
-							next( false );
+							// a violation constraints has been ocurred
+							abort();
 						};
 					} else {
 						next();
@@ -966,7 +964,8 @@ MSQTA._ORM.IndexedDB = {
 								cursor.continue();
 							};
 							req.onerror = function( e ) {
-								cursor.continue();
+								// a violation constraints has been ocurred
+								abort();
 							};
 							
 						} else {

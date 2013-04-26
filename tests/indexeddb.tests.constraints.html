@@ -1,0 +1,134 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>MSQTA.ORM - IndexedDB Implementation - Constraints</title>
+		<script src="../msqta.orm.js"></script>
+		<script src="../msqta.orm.indexeddb.js"></script>
+		<script src="../msqta.orm.schema.indexeddb.js"></script>
+		<script src="qunit-git.js"></script>
+		<link href="qunit-git.css" rel="stylesheet">
+	</head>
+	<body>
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script>
+		// globals
+		var db, schema, dbOptions = {
+			name: 'test.db',
+			devMode: true,
+			prefered: 'indexeddb'
+		};
+		var tests = [], i = 0;
+		
+		next = function() {
+			if( tests[i] ) {
+				tests[i]();
+				i++;
+			}
+		};
+
+		tests.push( function() {
+			asyncTest( 'Creating/opening a database', function() {
+				db = MSQTA.ORM( dbOptions, function( statusCode ) {
+					equal( statusCode, true );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Inserting records that will violate the constraints of the schema', function() {
+				schema = new db.Schema( {
+					name: 'products',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string', unique: true },
+						price: { type: 'float' }
+					},
+					primaryKey: 'id'
+				}, {
+					forceDestroy: true,
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+					
+						next();
+					}
+				} );
+			} );
+		} );
+
+		tests.push( function() {
+			asyncTest( 'Inserting unique records on schema', function() {
+				putData = [
+					{ name: 'Carbon', price: '12' },
+					{ name: 'Leña', price: "1.23" },
+					{ name: "Lechuga", price: 21 }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 3 );
+					schema.getAll( function( results ) {
+						equal( results.length, 3 );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		var setData;
+		tests.push( function() {
+			asyncTest( 'Updating records on schema that will violate the constraints', function() {
+				setData = [
+					{
+						data: { name: 'Lechuga' }, 
+						target: { id: 1 }
+					},
+					{
+						data: { name: 'Naranja' },
+						target: { id: 2 }
+					}
+				];
+				schema.set( setData, function( rowsAffected ) {
+					equal( rowsAffected, false );
+					schema.getAll( function( results ) {
+						equal( results.length, 3 );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Updating records that will not violated any constraints', function() {
+				setData = [
+					{
+						data: { name: 'Brocoli' }, 
+						target: { id: 1 }
+					},
+					{
+						data: { name: 'Naranja' },
+						target: { id: 2 }
+					}
+				];
+				schema.set( setData, function( rowsAffected ) {
+					equal( rowsAffected, 2 );
+					schema.getAll( function( results ) {
+						equal( results.length, 3 );
+						start();
+						
+						next();
+					} );
+				} );
+			} );
+		} );
+		
+		next();
+		</script>
+	</body>
+</html>

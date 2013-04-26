@@ -22,9 +22,6 @@ MSQTA._Schema.WebSQL = {
 				if( isIndex && isUnique ) {	
 					// true means that this is an index is also unique
 					indexesToCreate[fieldName] = true;
-					
-				} else if( isUnique ) {
-					attrs.push( 'UNIQUE' );
 				
 				} else if( isIndex ) {
 					indexesToCreate[fieldName] = false;
@@ -751,7 +748,7 @@ MSQTA._Schema.WebSQL = {
 				insertQueryValuesTokens.push( '?' );
 			}
 			insertQueryValues.push( values );
-			insertQueries.push( 'INSERT INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
+			insertQueries.push( 'INSERT OR ROLLBACK INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
 		queryData = { 
@@ -850,7 +847,7 @@ MSQTA._Schema.WebSQL = {
 			}
 			// whereClause can be empty
 			
-			queries.push( 'UPDATE ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
+			queries.push( 'UPDATE OR ROLLBACK ' + schemaName + ' SET ' + setClause.join( ', ' ) + ( whereClause.length ? ' WHERE ' + whereClause.join( ' AND ' ) : '' ) );
 			values.push( t );
 		}
 		

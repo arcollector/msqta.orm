@@ -685,6 +685,11 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 			fieldData.index = false;
 		}
 		if( fieldData.unique ) {
+			// an unique needs to be an index also
+			if( schemaIndexes.indexOf( fieldName ) === -1 ) {
+				schemaIndexes.push( fieldName );
+				fieldData.index = true;
+			}
 			schemaUniques.push( fieldName );
 			fieldData.unique = true;
 		} else {
