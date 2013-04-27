@@ -386,11 +386,11 @@ MSQTA._Helpers.WebSQLSanitizers = {
 		if( value instanceof Date ) {
 			return !isNan( value-0 ) ? value.toTimeString().substring( 0, 8 ) : onZero;
 		}
-		var m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
+		var m = /^(?:\d{4}-\d{2}-\d{2}(?: |T))?(\d{2}:\d{2})(:\d{2})[^Z]+Z|(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return m[1] + ( m[2] || ':00' );
+		return m[1] + ( m[2] || m[3] || ':00' );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
