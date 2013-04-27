@@ -367,12 +367,15 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date ) {
+			if( isNan( value-0 ) ) {
+				return onZero;
+			}
 			m = value.getMonth() + 1;
 			d = value.getDate();
 			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
-		} 
-		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
+		}
+		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
@@ -380,8 +383,8 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	},
 	
 	sanitizeTime: function( value, onZero ) {
-		if( value instanceof Date && +value >= 0 ) {
-			return value.toTimeString().substring( 0, 8 );
+		if( value instanceof Date ) {
+			return !isNan( value-0 ) ? value.toTimeString().substring( 0, 8 ) : onZero;
 		}
 		var m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
@@ -392,7 +395,10 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && +value >= 0 ) {
+		if( value instanceof Date ) {
+			if( isNaN( value-0 ) ) {
+				return onZero;
+			}
 			m = value.getMonth() + 1;
 			d = value.getDate();
 			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 );
@@ -491,14 +497,19 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && !isNaN( value-0 ) ) {
-			value.setHours( 0 );
-			value.setMinutes( 0 );
-			value.setSeconds( 0 );
-			value.setMilliseconds( 0 );
+		if( value instanceof Date ) {
+			if( isNaN( value-0 ) ) {
+				return onZero;
+			}
 			return value;
-		} 
-		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
+		}
+		// maybe value is a json date??
+		d = new Date( value );
+		if( !isNan( d-0 ) ) {
+			return d;
+		}
+		// try to parse the date string
+		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
@@ -507,10 +518,17 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	},
 	
 	sanitizeTime: function( value, onZero ) {
-		if( value instanceof Date && !isNaN( value-0 ) ) {
-			return value;
+		var m, d;
+		if( value instanceof Date ) {
+			return !isNaN( value-0 ) ? value : onZero;
 		}
-		var m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
+		// maybe value is a json date??
+		d = new Date( value );
+		if( !isNan( d-0 ) ) {
+			return d;
+		}
+		// try to parse the date string
+		m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
@@ -530,9 +548,15 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
-		if( value instanceof Date && !isNaN( value-0 ) ) {
-			return value;
+		if( value instanceof Date ) {
+			return isNaN( value-0 ) ? value : onZero;
 		}
+		// maybe value is a json date??
+		d = new Date( value );
+		if( !isNan( d-0 ) ) {
+			return d;
+		}
+		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?::(\d{2})[^Z]+Z|:(\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
@@ -555,7 +579,11 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 				return onZero;
 			}
 			if( typeof value === 'string' ) {
-				return "'" + value + "'";
+				try { 
+					return JSON.parse( '"' + value + '"' );
+				} catch( e ) {
+					return onZero;
+				}
 			}
 			// number
 			return value;

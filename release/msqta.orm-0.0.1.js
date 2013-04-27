@@ -372,7 +372,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 			d = value.getDate();
 			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
 		} 
-		m = /^(\d{4}-\d{2}-\d{2})(?: \d{2}:\d{2}(?::\d{2}))?$/.exec( value );
+		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
