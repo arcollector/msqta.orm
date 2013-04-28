@@ -253,7 +253,7 @@ Check this example
 ```
 Thinking in sql, this will translate to:
 ```sql
-	SELECT * FROM table_name WHERE name LIKE "doe%"
+	SELECT * FROM table_name WHERE name LIKE "%doe"
 ```
 	
 ## Schema#getByCallback

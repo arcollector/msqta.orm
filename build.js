@@ -89,7 +89,7 @@ function replaceErrors( value ) {
 }
 
 function replaceKeywords( value ) {
-	var methods = [ 'noop', 'defaultCallback', 'getCaster', 'castObj', 'castDate', 'castDate', 'castTime', 'castDateTime', 'castBoolean', 'castGeneric', 'dimSchemaInstance', 'dimORMInstance', 'getORMPrototype', 'instantiateSchema', 'getValueBySchema', 'resetSchemaAt', '_getValueBySchema', '_resetSchemaAt', 'getSanitizer', 'sanitizeString', 'sanitizeInt', 'sanitizeDate', 'sanitizeTime', 'sanitizeDatetime', 'sanitizeObj', 'sanitizeBoolean', 'sanitizeGeneric', 'zero', 'sanitizer', 'toJS', 'isDate', 'abstract', 'real', 'isJSON' ];
+	var methods = [ 'noop', 'defaultCallback', 'getCaster', 'castObj', 'castDate', 'castDate', 'castTime', 'castDateTime', 'castBoolean', 'castGeneric', 'dimSchemaInstance', 'dimORMInstance', 'getORMPrototype', 'instantiateSchema', 'getValueBySchema', 'resetSchemaAt', '_getValueBySchema', '_resetSchemaAt', 'getSanitizer', 'sanitizeString', 'sanitizeInt', 'sanitizeDate', 'sanitizeTime', 'sanitizeDatetime', 'sanitizeObj', 'sanitizeBoolean', 'sanitizeGeneric', 'zero', 'sanitizer', 'toJS', 'isDate', 'abstract', 'real', 'isJSON', 'tryJSONDate' ];
 	var properties = [ '_Helpers', 'WebSQLSanitizers', 'IndexedDBSanitizers', 'webSQLSize', 'supportedDataTypes', 'webSQLZeros', 'indexedDBZeros', 'schemaMethods', 'ormMethods', '_IndexedDB', '_IDBTransaction', '_IDBKeyRange', '_queries', '_Schemas', '_batchsStack', '_isBlocked', '_schemasToInit', '_initCallback', '_initContext', '_ORM', '_name', '_schemaFields', '_indexes', '_uniques', '_primaryKey', '_fieldsName', '_Schema', '_isBatchMode', '_isWaiting', '_schemaKeepTrack', '_implementation', 'IndexedDB', 'WebSQL', 'schemaPrototype', 'args', 'filterCallback', 'userCallback', 'userContext', '_isForceDestroy', '_isForceEmpty' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
@@ -158,7 +158,7 @@ function buildFull() {
 		filter: [ removeDevMode, replaceErrors, replaceKeywords, replaceWebSQLKeywords, replaceIndexedDBKeywords ],
 		dest: dest,
 	} );
-	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!", T = "__msqta__", D = "databases", I = "name", C = "dump";\n' + dest.value.replace( /'__msqta__'/g, 'T' ).replace( /'databases'/g, 'D' ).replace( /'name'/g, 'I' ).replace( /'dump'/g, 'C' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!", T = "__msqta__", D = "databases", I = "name", C = "dump", S = "onsuccess", R = "onerror", U = "onupgradeneeded";\n' + dest.value.replace( /'__msqta__'/g, 'T' ).replace( /'databases'/g, 'D' ).replace( /'name'/g, 'I' ).replace( /'dump'/g, 'C' ).replace( /\.onsuccess/g, '[S]' ).replace( /\.onerror/g, '[R]' ).replace( /\.onupgradeneeded/g, '[U]' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
 	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
@@ -227,7 +227,7 @@ function buildIndexedDB() {
 		dest: getMsqtaBuildName( true )
 	} );
 	
-	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!";\n' + dest.value + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	dest.value = '(function( window ) {\nvar E = "MSQTA-ORM!", T = "__msqta__", D = "databases", I = "name", C = "dump", S = "onsuccess", R = "onerror", U = "onupgradeneeded";\n' + dest.value.replace( /'__msqta__'/g, 'T' ).replace( /'databases'/g, 'D' ).replace( /'name'/g, 'I' ).replace( /'dump'/g, 'C' ).replace( /\.onsuccess/g, '[S]' ).replace( /\.onerror/g, '[R]' ).replace( /\.onupgradeneeded/g, '[U]' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
 	var minified = copy.createDataObject();
 	copy( {
 		source: dest,

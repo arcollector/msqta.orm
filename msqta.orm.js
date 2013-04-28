@@ -208,13 +208,9 @@ MSQTA._Helpers = {
 		}
 	},
 
-	instantiateSchema: function( setup ) {
-		var ORM = setup.ORM,
-			schemaPrototype = setup.schemaPrototype,
-			implementation = setup.implementation,
-			schemaDefinition = setup.schemaDefinition,
-			args = setup.args,
-			options = {},
+	instantiateSchema: function( ORM, schemaPrototype, schemaDefinition, implementation, args ) {
+		
+		var options = {},
 			schema;
 
 		if( !ORM ) {
@@ -462,6 +458,10 @@ MSQTA._Helpers.WebSQLSanitizers = {
 /***************************************/
 MSQTA._Helpers.IndexedDBSanitizers = {
 	
+	tryJSONDate: function( value ) {
+		return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/).test( value ) ? new Date( value ) : false;
+	},
+	
 	getSanitizer: function( dataType ) {
 		if( dataType === 'string' || dataType === 'text' ) {
 			return this.sanitizeString;
@@ -498,14 +498,10 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
 		if( value instanceof Date ) {
-			if( isNaN( value-0 ) ) {
-				return onZero;
-			}
-			return value;
+			return !isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		d = new Date( value );
-		if( !isNaN( d-0 ) ) {
+		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
 			return d;
 		}
 		// try to parse the date string
@@ -523,8 +519,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return !isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		d = new Date( value );
-		if( !isNaN( d-0 ) ) {
+		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
 			return d;
 		}
 		// try to parse the date string
@@ -552,8 +547,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		d = new Date( value );
-		if( !isNaN( d-0 ) ) {
+		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
 			return d;
 		}
 		// try to parse the date string

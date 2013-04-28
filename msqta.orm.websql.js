@@ -1,13 +1,7 @@
 MSQTA._ORM.WebSQL = {
 	
 	Schema: function( schemaDefinition ) {
-		return MSQTA._Helpers.instantiateSchema( { 
-			ORM: this.constructor._ORM,
-			schemaPrototype: MSQTA._Schema.WebSQL,
-			schemaDefinition: schemaDefinition,
-			implementation: 'webSQL',
-			args: arguments
-		} );
+		return MSQTA._Helpers.instantiateSchema( this.constructor._ORM, MSQTA._Schema.WebSQL, schemaDefinition, 'webSQL', arguments );
 	},
 	
 	_open: function() {

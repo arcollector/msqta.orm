@@ -1,13 +1,7 @@
 MSQTA._ORM.IndexedDB = {
 	
 	Schema: function( schemaDefinition ) {
-		return MSQTA._Helpers.instantiateSchema( { 
-			ORM: this.constructor._ORM,
-			schemaPrototype: MSQTA._Schema.IndexedDB,
-			schemaDefinition: schemaDefinition,
-			implementation: 'indexedDB',
-			args: arguments
-		} );
+		return MSQTA._Helpers.instantiateSchema( this.constructor._ORM, MSQTA._Schema.IndexedDB, schemaDefinition, 'indexedDB', arguments );
 	},
 // ********************************/
 // ********************************/
