@@ -1104,7 +1104,7 @@ MSQTA._ORM.IndexedDB = {
 		var databaseName = this._name,
 			batchData;
 		
-		if( !( data instanceof Array ) || !data.length ) {
+		if( !Array.isArray( data ) || !data.length ) {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		

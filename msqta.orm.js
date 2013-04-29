@@ -416,10 +416,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 			if( !value ) {
 				return onZero;
 			}
-			if( typeof value === 'string' ) {
-				return "'" + value + "'";
-			}
-			// number
+			// number || string
 			return value;
 		}
 		
@@ -574,7 +571,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			}
 			if( typeof value === 'string' ) {
 				try { 
-					return JSON.parse( '"' + value + '"' );
+					return JSON.parse( value );
 				} catch( e ) {
 					return onZero;
 				}

@@ -416,10 +416,7 @@ MSQTA._Helpers.WebSQLSanitizers = {
 			if( !value ) {
 				return onZero;
 			}
-			if( typeof value === 'string' ) {
-				return "'" + value + "'";
-			}
-			// number
+			// number || string
 			return value;
 		}
 		
@@ -574,7 +571,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			}
 			if( typeof value === 'string' ) {
 				try { 
-					return JSON.parse( '"' + value + '"' );
+					return JSON.parse( value );
 				} catch( e ) {
 					return onZero;
 				}
@@ -1840,7 +1837,7 @@ MSQTA._ORM.IndexedDB = {
 		var databaseName = this._name,
 			batchData;
 		
-		if( !( data instanceof Array ) || !data.length ) {
+		if( !Array.isArray( data ) || !data.length ) {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
@@ -2014,7 +2011,7 @@ MSQTA._Schema.IndexedDB = {
 			searchValue = new RegExp( searchValue + '$', 'i' );
 		}
 		
-		if( !( fields instanceof Array ) ) {
+		if( !Array.isArray( fields ) ) {
 			fields = [ fields ];
 		}
 		for( i = 0, l = fields.length; i < l; i++ ) {
@@ -2097,7 +2094,7 @@ MSQTA._Schema.IndexedDB = {
 			
 			req.onsuccess = function( e ) {
 				var db = this.result,
-					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
+					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY ),
 					objectStore = transaction.objectStore( schemaName );
 			
 				userDatabase = db;
@@ -2147,7 +2144,7 @@ MSQTA._Schema.IndexedDB = {
 			MSQTA._Errors.getByIndex2( databaseName, schemaName );
 		}
 		
-		if( !( searchValue instanceof Array ) ) {
+		if( !Array.isArray( searchValue ) ) {
 			searchValue = [ searchValue ];
 		}
 		
@@ -2313,7 +2310,7 @@ MSQTA._Schema.IndexedDB = {
 			
 			req.onsuccess = function( e ) {
 				var db = this.result,
-					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY );
+					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY ),
 					objectStore = transaction.objectStore( schemaName );
 				
 				// save the reference for the clsoe part
@@ -2338,7 +2335,7 @@ MSQTA._Schema.IndexedDB = {
 			data, i, l, k, m = fields.length,
 			queryData;
 		
-		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
+		if( !Array.isArray( datas ) && typeof datas === 'object' ) {
 			datas = [ datas ];
 		}
 		
@@ -2386,7 +2383,7 @@ MSQTA._Schema.IndexedDB = {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
 		}
 		
-		if( !( setDatas instanceof Array ) ) {
+		if( !Array.isArray( setDatas ) ) {
 			setDatas = [ setDatas ];
 		}
 		
@@ -2470,7 +2467,7 @@ MSQTA._Schema.IndexedDB = {
 			MSQTA._Errors.del2( databaseName, schemaName );
 		}
 		
-		if( !( ids instanceof Array ) ) {
+		if( !Array.isArray( ids ) ) {
 			ids = [ ids ];
 		}
 		
@@ -2679,7 +2676,7 @@ MSQTA._ORM.WebSQL = {
 			rowsAffected = 0,
 			query = queryData.query;
 		
-		if( !( query instanceof Array ) ) {
+		if( !Array.isArray( query ) ) {
 			query = [ query ];
 		}
 		
@@ -2728,7 +2725,7 @@ MSQTA._ORM.WebSQL = {
 	* @context SQLTransaction
 	*/
 	_results: function( results ) {
-		queryData = this._lastQuery;
+		var queryData = this._lastQuery;
 		
 		this._isWaiting = false;
 		// comes from _error()
@@ -2766,7 +2763,7 @@ MSQTA._ORM.WebSQL = {
 		var databaseName = this._name,
 			batchData;
 		
-		if( !( data instanceof Array ) || !data.length ) {
+		if( !Array.isArray( data ) || !data.length ) {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
@@ -3071,7 +3068,8 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			tempSchemaName = this._tempSchemaName,
 			indexQueries = [],
-			indexesToCreate = this._indexesToCreate;
+			indexesToCreate = this._indexesToCreate,
+			fieldName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t2) Creating again the indexes (if there is any one)' );
@@ -3292,7 +3290,8 @@ MSQTA._Schema.WebSQL = {
 			schemaName = this._name,
 			indexQueries = [],
 			indexesToDelete = this._indexesToDelete,
-			fieldName, indexesToCreate = this._indexesToCreate;
+			indexesToCreate = this._indexesToCreate,
+			fieldName;
 		
 		if( this.devMode ) {
 			console.log( '\t\t2) Creating/removing index(s) (if there is any)' );
@@ -3408,7 +3407,7 @@ MSQTA._Schema.WebSQL = {
 			MSQTA._Errors.getByIndex2( databaseName, schemaName );
 		}
 		
-		if( !( searchValue instanceof Array ) ) {
+		if( !Array.isArray( searchValue ) ) {
 			searchValue = [ searchValue ];
 		}
 		
@@ -3518,7 +3517,7 @@ MSQTA._Schema.WebSQL = {
 			searchValue = '%' + searchValue;
 		}
 		
-		if( !( fields instanceof Array ) ) {
+		if( !Array.isArray( fields ) ) {
 			fields = [ fields ];
 		}
 		for( i = 0, l = fields.length; i < l; i++ ) {
@@ -3573,7 +3572,7 @@ MSQTA._Schema.WebSQL = {
 			data, i, l, k, m = fields.length,
 			queryData;
 		
-		if( !( datas instanceof Array ) && typeof datas === 'object' ) {
+		if( !Array.isArray( datas ) && typeof datas === 'object' ) {
 			datas = [ datas ];
 		}
 		
@@ -3639,7 +3638,7 @@ MSQTA._Schema.WebSQL = {
 			MSQTA._Errors.set1( databaseName, schemaName, setDatas );
 		}
 		
-		if( !( setDatas instanceof Array ) ) {
+		if( !Array.isArray( setDatas ) ) {
 			setDatas = [ setDatas ];
 		}
 		
@@ -3725,7 +3724,7 @@ MSQTA._Schema.WebSQL = {
 			MSQTA._Errors.del2( databaseName, schemaName );
 		}
 		
-		if( !( ids instanceof Array ) ) {
+		if( !Array.isArray( ids ) ) {
 			ids = [ ids ];
 		}
 		

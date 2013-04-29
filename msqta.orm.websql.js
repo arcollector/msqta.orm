@@ -141,7 +141,7 @@ MSQTA._ORM.WebSQL = {
 			rowsAffected = 0,
 			query = queryData.query;
 		
-		if( !( query instanceof Array ) ) {
+		if( !Array.isArray( query ) ) {
 			query = [ query ];
 		}
 		
@@ -190,7 +190,7 @@ MSQTA._ORM.WebSQL = {
 	* @context SQLTransaction
 	*/
 	_results: function( results ) {
-		queryData = this._lastQuery;
+		var queryData = this._lastQuery;
 		
 		this._isWaiting = false;
 		// comes from _error()
@@ -228,7 +228,7 @@ MSQTA._ORM.WebSQL = {
 		var databaseName = this._name,
 			batchData;
 		
-		if( !( data instanceof Array ) || !data.length ) {
+		if( !Array.isArray( data ) || !data.length ) {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
