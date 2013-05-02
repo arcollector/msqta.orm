@@ -26,7 +26,8 @@ MSQTA._Schema.IndexedDB = {
 			databaseName = ORM._name,
 			schemaFields = this._schemaFields,
 			fieldName, fieldMapping = {},
-			schemaName = this._name;
+			schemaName = this._name,
+			queryData;
 	
 		if( !searchValue ) {
 			MSQTA._Errors.get( databaseName, schemaName );
@@ -49,17 +50,24 @@ MSQTA._Schema.IndexedDB = {
 			console.log( 'MSQTA-ORM: fetching record(s) from "' + schemaName + '" schema from the "' + databaseName + '" database' );
 		}
 		
-		this._getAll( {
-			callback: filterCallback, 
-			comparator: fieldMapping,
-			fields: null
-		}, userCallback, userContext );
+		queryData = {
+			type: 'getAll',
+			isReadOnly: true,
+			schema: schemaName,
+			filterCallback: filterCallback,
+			filterComparator: fieldMapping,
+			userCallback: userCallback,
+			userContext: userContext
+		};
+		
+		ORM._preExec( queryData );
 	},
 	
 	getAll: function( userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
-			schemaName = this._name;
+			schemaName = this._name,
+			queryData;
 		
 		var filterCallback = function() {
 			return true;
@@ -69,11 +77,16 @@ MSQTA._Schema.IndexedDB = {
 			console.log( 'MSQTA-ORM: fetching all records from "' + schemaName + '" schema from the "' + databaseName + '" database' );
 		}
 		
-		this._getAll( {
-			callback: filterCallback, 
-			comparator: null,
-			fields: null
-		}, userCallback, userContext );
+		queryData = {
+			type: 'getAll',
+			isReadOnly: true,
+			schema: schemaName,
+			filterCallback: filterCallback,
+			userCallback: userCallback,
+			userContext: userContext
+		};
+		
+		ORM._preExec( queryData );
 	},
 
 	getWithLike: function( fields, likeData, userCallback, userContext ) {
@@ -82,7 +95,8 @@ MSQTA._Schema.IndexedDB = {
 			schemaFields = this._schemaFields,
 			schemaName = this._name,
 			i, l, fieldName,
-			likeType, searchValue;
+			likeType, searchValue,
+			queryData;
 			
 		if( typeof likeData !== 'object' ) {
 			MSQTA._Errors.getWithLike1();
@@ -131,17 +145,25 @@ MSQTA._Schema.IndexedDB = {
 			console.log( 'MSQTA-ORM: fetching record(s) from "' + schemaName + '" schema from the "' + databaseName + '" database with like' );
 		}
 		
-		this._getAll( { 
-			callback: filterCallback, 
-			comparator: searchValue,
-			fields: fields
-		}, userCallback, userContext );
+		queryData = {
+			type: 'getAll',
+			isReadOnly: true,
+			schema: schemaName,
+			filterCallback: filterCallback,
+			filterComparator: searchValue,
+			filterFields: fields,
+			userCallback: userCallback,
+			userContext: userContext
+		};
+		
+		ORM._preExec( queryData );
 	},
 	
 	getByCallback: function( filterCallback, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
-			schemaName = this._name;
+			schemaName = this._name,
+			queryData;
 		
 		if( typeof filterCallback !== 'function' ) {
 			MSQTA._Errors.getByCallback( databaseName, schemaName );
@@ -151,73 +173,26 @@ MSQTA._Schema.IndexedDB = {
 			console.log( 'MSQTA-ORM: fetching record(s) from "' + schemaName + '" schema from the "' + databaseName + '" database by "callback"' );
 		}
 		
-		this._getAll( {
-			callback: filterCallback,
-			comparator: null,
-			fields: null
-		}, userCallback, userContext );
-	},
-	
-	_getAll: function( filterData, userCallback, userContext ) {
-		// agriou all params
-		var closureData = {
-			filterData: filterData,
-			userCallback: userCallback || MSQTA._Helpers.defaultCallback,
-			userContext: userContext || window,
-			self: this
+		queryData = {
+			type: 'getAll',
+			isReadOnly: true,
+			schema: schemaName,
+			filterCallback: filterCallback,
+			userCallback: userCallback,
+			userContext: userContext
 		};
-	
-		(function( closureData ) {
-			var self = closureData.self,
-				ORM = self._ORM,
-				req = ORM._openUserDatabase(),
-				// IDBDatabase object of the user database
-				userDatabase,
-				databaseName = ORM._name,
-				schemaName = self._name,
-			
-				fd = closureData.filterData,
-				filterCallback = fd.callback,
-				filterComparator = fd.comparator,
-				filterFields = fd.fields,
-			
-				data = [];
-			
-			req.onsuccess = function( e ) {
-				var db = this.result,
-					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY ),
-					objectStore = transaction.objectStore( schemaName );
-			
-				userDatabase = db;
-				
-				objectStore.openCursor().onsuccess = function( e ) {
-					var cursor = this.result,
-						record;
-					
-					if( cursor ) {
-						record = cursor.value;
-						if( filterCallback( record, filterFields, filterComparator ) ) {
-							data.push( record );
-						}
-						cursor.continue();
-						
-					} else {
-						// done
-						userDatabase.close();
-						closureData.userCallback.call( closureData.userContext, data );
-					}
-				};
-			};
-		})( closureData );
+		
+		ORM._preExec( queryData );
 	},
-	
+
 	getByIndex: function( fieldName, searchValue, userCallback, userContext ) {
 		var ORM = this._ORM,	
 			databaseName = ORM._name,
 			schemaName = this._name,
 			indexData = {}, fields = [],
 			filterCallback,
-			fieldValue, parsedValue, i, l;
+			fieldValue, parsedValue, i, l,
+			queryData;
 		
 		if( this._primaryKey !== fieldName ) {
 			if( this._indexes.indexOf( fieldName ) === -1 ) {
@@ -244,9 +219,17 @@ MSQTA._Schema.IndexedDB = {
 		}
 		
 		if( searchValue.length === 1 ) {
-			indexData.keyRange = MSQTA._IDBKeyRange.only( this._getValueBySchema( fieldName, searchValue[0] ) );
-			
-			this._getWithIDBKeyRange( indexData, userCallback, userContext );
+			queryData = {
+				type: 'getWithRange',
+				isReadOnly: true,
+				schema: schemaName,
+				// one of theses are undefined
+				rangePk: indexData.pk,
+				rangeIndex: indexData.index,
+				rangeKey: MSQTA._IDBKeyRange.only( this._getValueBySchema( fieldName, searchValue[0] ) ),
+				userCallback: userCallback,
+				userContext: userContext
+			};
 			
 		} else {
 			for( i = 0, l = searchValue.length; i < l; i++ ) {
@@ -266,12 +249,19 @@ MSQTA._Schema.IndexedDB = {
 				return false;
 			};
 			
-			this._getAll( { 
-				callback: filterCallback, 
-				comparator: indexData.pk || indexData.index,
-				fields: fields
-			}, userCallback, userContext );
+			queryData = {
+				type: 'getAll',
+				isReadOnly: true,
+				schema: schemaName,
+				filterCallback: filterCallback,
+				filterComparator: indexData.pk || indexData.index,
+				filterFields: fields,
+				userCallback: userCallback,
+				userContext: userContext
+			};
 		}
+		
+		ORM._preExec( queryData );
 	},
 	
 	getByIndexWithRange: function( fieldName, comparator, userCallback, userContext ) {
@@ -281,7 +271,8 @@ MSQTA._Schema.IndexedDB = {
 			schemaFields = this._schemaFields,
 			validOperators = /^(?:>|<|>=|<=|=)$/, operator,
 			indexData = {}, operatorsMapping = {}, operatorsCount, keyRange,
-			fieldData = schemaFields[fieldName], fieldValue, parsedValue;
+			fieldData = schemaFields[fieldName], fieldValue, parsedValue,
+			queryData;
 		
 		if( this._primaryKey !== fieldName ) {
 			if( this._indexes.indexOf( fieldName ) === -1 ) {
@@ -362,59 +353,20 @@ MSQTA._Schema.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: fetching record(s) from "' + schemaName + '" schema from the "' + databaseName + '" database using ' + ( indexData.pk ? 'primary key: "' + indexData.pk + '"' : 'index: "' + indexData.index + '"' ) + ' with range' );
 		}
-		
-		this._getWithIDBKeyRange( indexData, userCallback, userContext );
-	},
 	
-	_getWithIDBKeyRange: function( range, userCallback, userContext ) {
-		// agriou all params
-		var closureData = {
-			range: range,
-			userCallback: userCallback || MSQTA._Helpers.defaultCallback,
-			userContext: userContext || window,
-			self: this
+		queryData = {
+			type: 'getWithRange',
+			isReadOnly: true,
+			schema: schemaName,
+			// one of theses are undefined
+			rangePk: indexData.pk,
+			rangeIndex: indexData.index,
+			rangeKey: keyRange,
+			userCallback: userCallback,
+			userContext: userContext
 		};
-	
-		(function( closureData ) {
-			var self = closureData.self,
-				ORM = self._ORM,
-				range = closureData.range,
-				pk = range.pk, index = range.index, keyRange = range.keyRange,
-				req = ORM._openUserDatabase(),
-				// IDBDatabase object of the user database
-				userDatabase,
-				databaseName = ORM._name,
-				schemaName = self._name,
-				data = [];
-			
-			var grabRecords = function( e ) {
-				var cursor = this.result;
-				if( cursor ) {
-					data.push( cursor.value );
-					cursor.continue();
-				} else {
-					// done
-					userDatabase.close();
-					closureData.userCallback.call( closureData.userContext, data );
-				}
-			};
-			
-			req.onsuccess = function( e ) {
-				var db = this.result,
-					transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_ONLY ),
-					objectStore = transaction.objectStore( schemaName );
-				
-				// save the reference for the clsoe part
-				userDatabase = db;
-				
-				if( pk ) {
-					objectStore.openCursor( keyRange ).onsuccess = grabRecords;
-
-				} else {
-					objectStore.index( index ).openCursor( keyRange ).onsuccess = grabRecords;
-				}
-			};
-		})( closureData );
+		
+		ORM._preExec( queryData );
 	},
 	/***************************************/
 	put: function( datas, userCallback, userContext ) {

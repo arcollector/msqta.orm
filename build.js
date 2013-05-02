@@ -121,8 +121,8 @@ function replaceWebSQLKeywords( value ) {
 }
 
 function replaceIndexedDBKeywords( value ) {
-	var methods = [ '_initSchemas2', '_updateUserDatabaseRecord', '_initSchemaFail', '_createSchemaForReal', '_nextSchemaToInit', '_saveBranch', '_openUserDatabaseForChanges', '_openUserDatabase', '_preExec', '_exec', '_done', '_destroy2', '_getAll', '_getWithIDBKeyRange', 'openUserDB', 'openTestigoDB', 'getCursor', 'init', 'getRecord', 'saveRecord', 'nextRecord', 'done', '_openTestigoDatabase', '_getSchemaObjectStore', '_del2', '_del3' ];
-	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected', 'indexes', 'activeObjectStore', 'activeDatabase' ];
+	var methods = [ '_initSchemas2', '_updateUserDatabaseRecord', '_initSchemaFail', '_createSchemaForReal', '_nextSchemaToInit', '_saveBranch', '_openUserDatabaseForChanges', '_openUserDatabase', '_preExec', '_exec', '_done', '_destroy2', 'openUserDB', 'openTestigoDB', 'getCursor', 'init', 'getRecord', 'saveRecord', 'nextRecord', 'done', '_openTestigoDatabase', '_getSchemaObjectStore', '_del2', '_del3' ];
+	var properties = [ '_SwapRecords', 'endCallback', 'endContext', 'endArg', '_self', 'processCallback', 'isAdvance', 'key', 'targetDB', 'baseDB', 'isBaseDBMSQTA', 'targetSchema', 'openBaseDB', 'baseSchema', 'openTargetDB', 'targetSchema', '_currentSchema', '_currentBranch', 'recordsAffected', 'indexes', 'activeObjectStore', 'activeDatabase', 'isReadOnly', 'rangePk', 'rangeIndex', 'rangeKey', 'filterComparator', 'filterCallback', 'filterFields' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {
@@ -158,7 +158,7 @@ function buildFull() {
 		filter: [ removeDevMode, replaceErrors, replaceKeywords, replaceWebSQLKeywords, replaceIndexedDBKeywords ],
 		dest: dest,
 	} );
-	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transaction = "transaction", indexedDBContinue = "continue", indexedDBResult = "result", testigoDB = "__msqta__", testigoDBDatabasesSchema = "databases", testigoDBDatabaseIndex = "name", testigoDBDumpSchema = "dump", onSuccess = "onsuccess", onError = "onerror", onUpgradeNeeded = "onupgradeneeded", executeSql = "executeSql", currentsIDsTable = " __currents_ids__ ";\n' + dest.value.replace( /\.transaction/g, '[transaction]' ).replace( /'__msqta__'/g, 'testigoDB' ).replace( /'databases'/g, 'testigoDBDatabasesSchema' ).replace( /'name'/g, 'testigoDBDatabaseIndex' ).replace( /'dump'/g, 'testigoDBDumpSchema' ).replace( /\.onsuccess/g, '[onSuccess]' ).replace( /\.onerror/g, '[onError]' ).replace( /\.onupgradeneeded/g, '[onUpgradeNeeded]' ).replace( /\.continue/g, '[indexedDBContinue]' ).replace( /\.result/g, '[indexedDBResult]' ).replace( /\.executeSql/g, '[executeSql]' ).replace( / __currents_ids__ /g, "' + currentsIDsTable + '" ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transactionFunction = "transaction", indexedDBContinue = "continue", indexedDBResult = "result", testigoDB = "__msqta__", testigoDBDatabasesSchema = "databases", testigoDBDatabaseIndex = "name", testigoDBDumpSchema = "dump", onSuccess = "onsuccess", onError = "onerror", onUpgradeNeeded = "onupgradeneeded", executeSql = "executeSql", currentsIDsTable = " __currents_ids__ ";\n' + dest.value.replace( /\.transaction/g, '[transactionFunction]' ).replace( /'__msqta__'/g, 'testigoDB' ).replace( /'databases'/g, 'testigoDBDatabasesSchema' ).replace( /'name'/g, 'testigoDBDatabaseIndex' ).replace( /'dump'/g, 'testigoDBDumpSchema' ).replace( /\.onsuccess/g, '[onSuccess]' ).replace( /\.onerror/g, '[onError]' ).replace( /\.onupgradeneeded/g, '[onUpgradeNeeded]' ).replace( /\.continue/g, '[indexedDBContinue]' ).replace( /\.result/g, '[indexedDBResult]' ).replace( /\.executeSql/g, '[executeSql]' ).replace( / __currents_ids__ /g, "' + currentsIDsTable + '" ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
 	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
@@ -193,7 +193,7 @@ function buildWebSQL() {
 		dest: dest,
 	} );
 	
-	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transaction = "transaction", executeSql = "executeSql", currentsIDsTable = " __currents_ids__ ";\n' + dest.value.replace( /\.transaction/g, '[transaction]' ).replace( /\.executeSql/g, '[executeSql]' ).replace( / __currents_ids__ /g, "' + currentsIDsTable + '" ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transactionFunction = "transaction", executeSql = "executeSql", currentsIDsTable = " __currents_ids__ ";\n' + dest.value.replace( /\.transaction/g, '[transactionFunction]' ).replace( /\.executeSql/g, '[executeSql]' ).replace( / __currents_ids__ /g, "' + currentsIDsTable + '" ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
 	var minified = copy.createDataObject();
 	copy( {
 		source: dest,
@@ -227,7 +227,7 @@ function buildIndexedDB() {
 		dest: getMsqtaBuildName( true )
 	} );
 	
-	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transaction = "transaction", indexedDBContinue = "continue", indexedDBResult = "result", testigoDB = "__msqta__", testigoDBDatabasesSchema = "databases", testigoDBDatabaseIndex = "name", testigoDBDumpSchema = "dump", onSuccess = "onsuccess", onError = "onerror", onUpgradeNeeded = "onupgradeneeded";\n' + dest.value.replace( /\.transaction/g, '[transaction]' ).replace( /'__msqta__'/g, 'testigoDB' ).replace( /'databases'/g, 'testigoDBDatabasesSchema' ).replace( /'name'/g, 'testigoDBDatabaseIndex' ).replace( /'dump'/g, 'testigoDBDumpSchema' ).replace( /\.onsuccess/g, '[onSuccess]' ).replace( /\.onerror/g, '[onError]' ).replace( /\.onupgradeneeded/g, '[onUpgradeNeeded]' ).replace( /\.continue/g, '[indexedDBContinue]' ).replace( /\.result/g, '[indexedDBResult]' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
+	dest.value = '(function( window ) {\nvar ERROR = "MSQTA-ORM!", transactionFunction = "transaction", indexedDBContinue = "continue", indexedDBResult = "result", testigoDB = "__msqta__", testigoDBDatabasesSchema = "databases", testigoDBDatabaseIndex = "name", testigoDBDumpSchema = "dump", onSuccess = "onsuccess", onError = "onerror", onUpgradeNeeded = "onupgradeneeded";\n' + dest.value.replace( /\.transaction/g, '[transactionFunction]' ).replace( /'__msqta__'/g, 'testigoDB' ).replace( /'databases'/g, 'testigoDBDatabasesSchema' ).replace( /'name'/g, 'testigoDBDatabaseIndex' ).replace( /'dump'/g, 'testigoDBDumpSchema' ).replace( /\.onsuccess/g, '[onSuccess]' ).replace( /\.onerror/g, '[onError]' ).replace( /\.onupgradeneeded/g, '[onUpgradeNeeded]' ).replace( /\.continue/g, '[indexedDBContinue]' ).replace( /\.result/g, '[indexedDBResult]' ) + '\nwindow.MSQTA = MSQTA;\n})( window );';
 	var minified = copy.createDataObject();
 	copy( {
 		source: dest,

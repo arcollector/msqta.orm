@@ -803,7 +803,7 @@ MSQTA._ORM.IndexedDB = {
 		
 		req.onsuccess = function( e ) {
 			var db = this.result,
-				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE ),
+				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction[queryData.isReadOnly ? 'READ_ONLY' : 'READ_WRITE'] ),
 				objectStore = transaction.objectStore( schemaName );
 			
 			// keep augmenting q (queryData)
@@ -1095,6 +1095,58 @@ MSQTA._ORM.IndexedDB = {
 				};
 			};
 		};
+	},
+	
+	_getAll: function( queryData ) {
+		var self = this,
+			filterCallback = queryData.filterCallback,
+			filterFields = queryData.filterFields,
+			filterComparator = queryData.filterComparator,
+			objectStore = queryData.activeObjectStore,
+			data = [];
+			
+		objectStore.openCursor().onsuccess = function( e ) {
+			var cursor = this.result,
+				record;
+			
+			if( cursor ) {
+				record = cursor.value;
+				if( filterCallback( record, filterFields, filterComparator ) ) {
+					data.push( record );
+				}
+				cursor.continue();
+				
+			} else {
+				self._done( queryData, data );
+			}
+		};
+	},
+	
+	_getWithRange: function( queryData ) {
+		var self = this,
+			rangePk = queryData.rangePk,
+			rangeIndex = queryData.rangeIndex,
+			rangeKey = queryData.rangeKey,
+			objectStore = queryData.activeObjectStore,
+			data = [];
+		
+		var grabRecords = function( e ) {
+			var cursor = this.result;
+			if( cursor ) {
+				data.push( cursor.value );
+				cursor.continue();
+				
+			} else {
+				self._done( queryData, data );
+			}
+		};
+
+		if( rangePk ) {
+			objectStore.openCursor( rangeKey ).onsuccess = grabRecords;
+
+		} else {
+			objectStore.index( rangeIndex ).openCursor( rangeKey ).onsuccess = grabRecords;
+		}
 	},
 /*********************/
 /**** public functions **/
