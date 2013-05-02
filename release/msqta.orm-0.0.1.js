@@ -1550,8 +1550,7 @@ MSQTA._ORM.IndexedDB = {
 		
 		req.onsuccess = function( e ) {
 			var db = this.result,
-				type = queryData.type,
-				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE );
+				transaction = db.transaction( [ schemaName ], MSQTA._IDBTransaction.READ_WRITE ),
 				objectStore = transaction.objectStore( schemaName );
 			
 			// keep augmenting q (queryData)
@@ -1743,7 +1742,7 @@ MSQTA._ORM.IndexedDB = {
 		var self = this,
 			datas = queryData.data,
 			pk = queryData.primaryKey,
-		
+			objectStore = queryData.activeObjectStore,
 			currentIndex = 0, totalQueries = datas.length;
 		
 		var next = function() {
