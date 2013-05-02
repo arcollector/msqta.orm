@@ -350,7 +350,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_checkSchemaChanges: function( registeredSchemaDefinition, currentSchemaDefinition ) {
 		// check for schema changes
-		var isNewSchema = false,
+		var isNewSchema = false, fieldName,
 			registeredFields = registeredSchemaDefinition.fields,
 			currentFields = currentSchemaDefinition.fields,
 			registeredFieldData, currentFieldData;

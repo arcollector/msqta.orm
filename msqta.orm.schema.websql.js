@@ -212,9 +212,16 @@ MSQTA._Schema.WebSQL = {
 					' UPDATE __currents_ids__ SET last_id = ( ' +
 					// but we need to know if the user at the insert query the id value was provided by the user
 						' SELECT CASE ' +
-						' WHEN ( SELECT 1 WHERE NEW.rowid > ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) )' +
+						// the new row has an rowid greater than the current last_id, this happens when the user
+						// uses a custom id, in this case last_id needs to be setted to this custom rowid
+						' WHEN ( SELECT 1 WHERE NEW.rowid >= ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) )' +
 							' THEN NEW.rowid ' +
+						// inserting a record with an ID less than the current, means dont change ANYTHING
+						// to make this wil do this last_id - 1 + 1
+						' WHEN ( SELECT 1 WHERE NEW.rowid < ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) )' +
+							' THEN ( SELECT last_id - 1 FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) ' +
 						// or the id was getted directly form the __currents_ids__ table (default)
+						// increment it by one
 						' ELSE ' +
 							' ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) ' +
 						' END ' +
@@ -224,7 +231,7 @@ MSQTA._Schema.WebSQL = {
 				' END '
 		);
 		
-		setIntialLastID = 'INSERT OR REPLACE INTO __currents_ids__ VALUES( null, "' + schemaName + '", 1 )';
+		setIntialLastID = 'REPLACE INTO __currents_ids__ VALUES( null, "' + schemaName + '", 1 )';
 		
 		// create the new table
 		ORM._transaction( { query: [ this._createTableQuery, triggerUpdateLastID, setIntialLastID ], internalContext: this, internalCallback: this._updateSchema10, isInternal: true } );

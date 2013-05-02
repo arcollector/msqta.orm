@@ -92,7 +92,52 @@
 				} );
 			} );
 		} );
-
+		
+		tests.push( function() {
+			asyncTest( 'Inserting records on database with a force id value again', function() {
+				putData = [
+					{ id: 6, name: 'Marcelo' },
+					{ name: 'Juana' }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 32 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Inserting records on database with a force id value again', function() {
+				putData = [
+					{name: 'Jose' },
+					{ name: 'Josefina' }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 34 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Inserting records on database with a force id value again', function() {
+				putData = [
+					{ id: 50, name: 'Ivan' },
+					{ name: 'Damian' }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 51 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
 		next();
 		</script>
 	</body>
