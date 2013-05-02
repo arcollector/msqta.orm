@@ -1,0 +1,99 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>MSQTA.ORM - IndexedDB Implementation - Tests</title>
+		<script src="../msqta.orm.js"></script>
+		<script src="../msqta.orm.websql.js"></script>
+		<script src="../msqta.orm.schema.websql.js"></script>
+		<script src="qunit-git.js"></script>
+		<link href="qunit-git.css" rel="stylesheet">
+	</head>
+	<body>
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script>
+		// globals
+		var db, schema;
+		var tests = [], i = 0;
+		
+		var next = function() {
+			if( tests[i] ) {
+				tests[i]();
+				i++;
+			}
+		};
+
+		tests.push( function() {
+			asyncTest( 'Creating/opening a database', function() {
+				db = MSQTA.ORM( {
+					name: 'test.db',
+					devMode: true,
+					prefered: 'webSQL',
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+					
+						next();
+					}
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Creating schema (with forceDestroy flag setted)', function() {
+				schema = new db.Schema( {
+					name: 'personas',
+					fields: {
+						id: { type: 'integer' },
+						name: { type: 'string' }
+					},
+					primaryKey: 'id'
+				},
+				{
+					forceDestroy: true,
+					callback: function( statusCode ) {
+						equal( statusCode, true );
+						start();
+						
+						next();
+					}
+				} );
+			} );
+		} );
+		
+		var putData;
+		tests.push( function() {
+			asyncTest( 'Inserting records on database', function() {
+				putData = [
+					{ name: 'Jorge' },
+					{ name: 'Luis' },
+					{ name: 'Pepe' }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 3 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+		
+		tests.push( function() {
+			asyncTest( 'Inserting records on database with a force id value', function() {
+				putData = [
+					{ id: 30, name: 'Laura' },
+					{ name: 'Jimena' }
+				];
+				schema.put( putData, function( lastID ) {
+					equal( lastID, 31 );
+					start();
+					
+					next();
+				} );
+			} );
+		} );
+
+		next();
+		</script>
+	</body>
+</html>

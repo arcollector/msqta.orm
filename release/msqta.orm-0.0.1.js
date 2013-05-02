@@ -614,12 +614,20 @@ MSQTA.ORM = function( settings, callback, context ) {
 	if( typeof settings === 'string' ) {
 		settings = { name: settings };
 	}
-	if( !settings.name ) {
+	
+	var databaseName = settings.name;
+	if( !databaseName ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}
+	if( databaseName === '__msqta__' ) {
+		throw Error( 'MSQTA-ORM: __msqta__ is a reserved word!' );
+	}
+	if( !/^[\w][-.\w\d]+$/i.test( databaseName ) ) {
+		throw Error( 'MSQTA-ORM: database name has invalid characters!' );
+	}
 	
-	settings.callback = callback || MSQTA._Helpers.defaultCallback;
-	settings.context = context || window;
+	settings.callback = settings.callback || callback || MSQTA._Helpers.defaultCallback;
+	settings.context = settings.context || context || window;
 	
 	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
 	return new MSQTA._ORM( settings );
@@ -667,22 +675,28 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	var databaseName = ORM._name,
 		schemaName = schemaDefinition.name;
 	
+	if( schemaName === '__currents_ids__' ) {
+		throw Error( 'MSQTA-ORM: __currents_ids__ is a reserved word!' );
+	}
+	if( !/^[\w][-\w\d]+$/i.test( schemaName ) ) {
+		throw Error( 'MSQTA-ORM: schema name has invalid characters!' );
+	}
 	if( ORM._Schemas[schemaName] && !options.forceDestroy ) {
-		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
 	}
 	
 	var schemaFields = schemaDefinition.fields;
 	if( typeof schemaFields !== 'object' || !Object.keys( schemaFields ).length ) {
-		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema definition of the "' + databaseName + '" database is invalid!' );
+		throw Error( 'MSQTA-ORM: "' + schemaName + '" schema definition of the "' + databaseName + '" database is invalid!' );
 	}
 	
 	var pk = schemaDefinition.primaryKey;
 	// check if pk refers to a exisitnet colmun
 	if( !pk || ( pk && !schemaFields[pk] ) ) {
-		throw Error( 'MSQTA-Schema: primary key referes to a non-exisistent fieldName in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: primary key referes to a non-exisistent fieldName in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
 	if( schemaFields[pk].type !== 'integer' ) {
-		throw Error( 'MSQTA-Schema: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
 	// force null values on the primary key, to get working the auto_increment
 	schemaFields[pk].allowNull = true;
@@ -695,7 +709,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		fieldData = schemaFields[fieldName];
 		if( fieldData.index ) {
 			if( !/^(integer|float|string|date|time|datetime|boolean)$/.test( fieldData.type ) ) {
-				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+				throw Error( 'MSQTA-ORM: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 			}
 			schemaIndexes.push( fieldName );
 			fieldData.index = true;
@@ -2544,6 +2558,9 @@ MSQTA._ORM.WebSQL = {
 		(function( self ) {
 			self._testigoDB = window.openDatabase( '__msqta__', 1, '', MSQTA._Helpers.webSQLSize );
 			self._testigoDB.transaction( function( tx ) {
+				if( self.devMode ) {
+					console.log( 'MSQTA.ORM: creating if not exists (first run) the table "databases" on "__msqta__" internal database' );
+				}
 				tx.executeSql( 'CREATE TABLE IF NOT EXISTS databases( id INTEGER PRIMARY KEY, name TEXT UNIQUE, schemas TEXT )' );
 				tx.executeSql( 'SELECT * FROM databases WHERE name = "' + self._name + '"', [], function( tx, results ) {
 					self._open2( results );
@@ -2562,11 +2579,25 @@ MSQTA._ORM.WebSQL = {
 		// that this._queries in terms at the moment of execute the next query
 		this._queriesInternal = [];
 		
-		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
-
-		this._initCallback.call( this.initContext, true );
+		if( this.devMode ) {
+			console.log( 'MSQTA.ORM: creating/opening the "' + this._name + '" user database' );
+		}			
 		
-		this._initSchemas();
+		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
+		
+		// create the __currents_ids__ table
+		(function( self ) {
+			self._userDB.transaction( function( tx ) {
+				if( self.devMode ) {
+					console.log( 'MSQTA.ORM: creating if not exists (first run) the table __currents_ids__ on "' + self._name + '" user database' );
+				}
+				tx.executeSql( 'CREATE TABLE IF NOT EXISTS __currents_ids__( id INTEGER PRIMARY KEY, table_name TEXT UNIQUE, last_id INTEGER )' );
+				
+			}, null, function() {
+				self._initCallback.call( self.initContext, true );
+				self._initSchemas();
+			} );
+		})( this );
 	},
 
 	_initSchema: function( Schema ) {
@@ -2579,10 +2610,13 @@ MSQTA._ORM.WebSQL = {
 	
 	_initSchemas: function() {
 		var self = this,
+			Schema,
 			databaseName = this._name;
 		
 		if( this._schemasToInit.length ) {
-			this._schemasToInit.shift()._init2();
+			// call _init2 using the Schema instance
+			Schema = this._schemasToInit.shift();
+			Schema._init2();
 			
 		} else {
 			this._endSchemasInitialization();
@@ -2602,10 +2636,11 @@ MSQTA._ORM.WebSQL = {
 			console.log( 'MSQTA-ORM: saving schema definition in the testigo database to keep tracking future changes on it' );
 		}
 		this._testigoDB.transaction( function( tx ) {
-			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')', [], function() {
-				// true for success
-				callback.call( context, arg );
-			} );
+			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')' );
+			
+		}, null, function() {
+			// true for success
+			callback.call( context, arg );
 		} );
 	},
 	
@@ -2614,13 +2649,23 @@ MSQTA._ORM.WebSQL = {
 	},
 	
 	_deleteUserSchema: function( Schema, queryData ) {
-		var schemaName = Schema._name;
+		var self = this,
+			schemaName = Schema._name;
 		
 		delete this._Schemas[schemaName];
 		delete this._schemasDefinition[schemaName];
 		MSQTA._Helpers.dimSchemaInstance( Schema );
 	
-		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
+		this._userDB.transaction( function( tx ) {
+			if( self.devMode ) {
+				console.log( 'MSQTA-ORM: stop tracking "last inserted id" from this schema' );
+			}
+			// stop tracking last_id from this table
+			tx.executeSql( 'DELETE FROM __currents_ids__ WHERE table_name = "' + schemaName + '"' );
+			
+		}, null, function() {
+			self._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
+		} );
 	},
 	
 	/**
@@ -2634,17 +2679,10 @@ MSQTA._ORM.WebSQL = {
 	_transaction: function( queryData ) {
 		var callback = queryData.userCallback,
 			context = queryData.userContext;
-		
-		if( callback && typeof callback !== 'function' ) {
-			throw Error( 'MSQTA-ORM: supplied callback is not a function: ', callback );
-		}
+
 		// use default callback
 		if( !callback ) {
 			queryData.userCallback = MSQTA._Helpers.defaultCallback;
-		}
-		
-		if( context && typeof context !== 'object' ) {
-			throw Error( 'MSQTA-ORM: supplied context is not an object: ', context );
 		}
 		// use window as context
 		if( !context ) {
@@ -2767,10 +2805,10 @@ MSQTA._ORM.WebSQL = {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
-		if( typeof callback !== 'function' ) {
+		if( !callback ) {
 			callback = MSQTA._Helpers.defaultCallback;
 		}
-		if( typeof context !== 'object' ) {
+		if( !context ) {
 			context = window;
 		}
 		// agrup arguments for a better manipulation
@@ -2893,16 +2931,13 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
-			
-			createTableQuery = this._createTableQuery,
 			dropTableQuery,
-		
 			registeredSchemaDefinition, currentSchemaDefinition;
 		
 		if( this._isForceDestroy ) {			
 			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
+			ORM._transaction( { query: dropTableQuery, internalContext: this, internalCallback: this._createSchema, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -3013,16 +3048,16 @@ MSQTA._Schema.WebSQL = {
 				}
 				ORM._schemasDefinition[schemaName] = currentSchemaDefinition;
 				// delete the index to be delete and create the new one (if any) and done
-				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema11, this );
+				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema10, this );
 			
 			} else {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
 				if( this._isForceEmpty ) {
-					this._updateSchema10();
-				} else {
 					this._updateSchema9();
+				} else {
+					this._updateSchema8();
 				}
 			}
 		}
@@ -3032,14 +3067,41 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			databaseName = ORM._name,
-			createTableQuery = this._createTableQuery;
+			pk = this._primaryKey,
+			triggerUpdateLastID, setIntialLastID;
 		
 		if( this.devMode ) {
 			console.log( '\tthe schema is a new one, starting creation process!' );
+			console.log( '\t\t1) Creating the "' + schemaName + '" table and its "last_id" trigger' );
 		}
 		
+		// we dont use the default auto_increment mechanism that offers sqlite3 because it's differs from the
+		// indexeddb one, so, this triggers set the new id based on the current value that it's stored on the
+		// table __currents_ids__ at every new insert query.
+		triggerUpdateLastID = (
+			'CREATE TRIGGER IF NOT EXISTS update_last_id_on_' + schemaName +
+				' AFTER INSERT ON ' + schemaName +
+				' BEGIN ' +
+					// increment last_id of the related table by one
+					' UPDATE __currents_ids__ SET last_id = ( ' +
+					// but we need to know if the user at the insert query the id value was provided by the user
+						' SELECT CASE ' +
+						' WHEN ( SELECT 1 WHERE NEW.rowid > ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) )' +
+							' THEN NEW.rowid ' +
+						// or the id was getted directly form the __currents_ids__ table (default)
+						' ELSE ' +
+							' ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) ' +
+						' END ' +
+					// rest of the update query
+					' ) + 1 WHERE table_name = "' + schemaName + '" ; ' +
+				// end outermost begin
+				' END '
+		);
+		
+		setIntialLastID = 'INSERT OR REPLACE INTO __currents_ids__ VALUES( null, "' + schemaName + '", 1 )';
+		
 		// create the new table
-		ORM._transaction( { query: createTableQuery, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
+		ORM._transaction( { query: [ this._createTableQuery, triggerUpdateLastID, setIntialLastID ], internalContext: this, internalCallback: this._updateSchema10, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -3056,7 +3118,7 @@ MSQTA._Schema.WebSQL = {
 		this._tempSchemaName = tempSchemaName;
 		
 		if( this.devMode ) {
-			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
+			console.log( '\t\t1) Creating the "' + tempSchemaName + '" table (this will be the new one at the end of the process)' );
 		}
 		
 		ORM._transaction( { query: createTempTableQuery, internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
@@ -3107,11 +3169,11 @@ MSQTA._Schema.WebSQL = {
 			// dont clean again
 			this._isEmpty = true;
 			// goto directly to step 
-			this._updateSchema9();
+			this._updateSchema8();
 		
 		// not need to save records
 		} else if( this._isForceDestroy ) {
-			this._updateSchema8();
+			this._updateSchema7();
 			
 		} else {
 			this._updateSchema4();
@@ -3240,24 +3302,19 @@ MSQTA._Schema.WebSQL = {
 	
 	_updateSchema7: function() {
 		var ORM = this._ORM;
+		
 		if( this.devMode ) {
-			console.log( '\t\t7) Updating schema process has ended successful' );
+			console.log( '\t\t7) Initialization schema process has ended successful' );
 		}
 		
-		this._updateSchema8();
+		if( this._isForceEmpty && !this._isEmpty ) {
+			this._updateSchema9();
+		} else {
+			this._updateSchema8();
+		}
 	},
 	
 	_updateSchema8: function() {
-		var ORM = this._ORM;
-		
-		if( this._isForceEmpty && !this._isEmpty ) {
-			this._updateSchema10();
-		} else {
-			this._updateSchema9();
-		}
-	},
-	
-	_updateSchema9: function() {
 		// clean
 		delete this._createTableQuery;
 		delete this._indexesToCreate;
@@ -3276,16 +3333,16 @@ MSQTA._Schema.WebSQL = {
 		this._ORM._initSchemas();
 	},
 	
-	_updateSchema10: function() {
+	_updateSchema9: function() {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema9, isInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
 	},
 	
-	_updateSchema11: function() {
+	_updateSchema10: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			indexQueries = [],
@@ -3310,7 +3367,11 @@ MSQTA._Schema.WebSQL = {
 			}
 		}
 		
-		ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
+		if( indexQueries.length ) {
+			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+		} else {
+			this._updateSchema7();
+		}
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -3563,8 +3624,9 @@ MSQTA._Schema.WebSQL = {
 	put: function( datas, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
-			fields = this._fieldsName, fieldName,
+			fields = this._fieldsName, fieldName, fieldValue,
 			schemaName = this._name,
+			pk = this._primaryKey,
 			insertQueryCols,
 			insertQueryValues = [], values,
 			insertQueryValuesTokens,
@@ -3584,14 +3646,23 @@ MSQTA._Schema.WebSQL = {
 			for( k = 0; k < m; k++ ) {
 				fieldName = fields[k];
 				insertQueryCols.push( fieldName );
-				values.push( this._getValueBySchema( fieldName, data[fieldName] ) );
-				insertQueryValuesTokens.push( '?' );
+				fieldValue = this._getValueBySchema( fieldName, data[fieldName] );
+				if( fieldName === pk &&
+				// idValue maybe null or an negative number, in theses cases
+				// we need to get the last_id from __currents_ids__
+				( !fieldValue || fieldValue <= 0 ) ) {
+					insertQueryValuesTokens.push( '( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" )' );
+
+				} else {
+					values.push( fieldValue );
+					insertQueryValuesTokens.push( '?' );
+				}
 			}
 			insertQueryValues.push( values );
 			insertQueries.push( 'INSERT OR ROLLBACK INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
-		queryData = { 
+		queryData = {
 			query: insertQueries,
 			replacements: insertQueryValues,
 			userCallback: userCallback, 

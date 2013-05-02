@@ -614,12 +614,20 @@ MSQTA.ORM = function( settings, callback, context ) {
 	if( typeof settings === 'string' ) {
 		settings = { name: settings };
 	}
-	if( !settings.name ) {
+	
+	var databaseName = settings.name;
+	if( !databaseName ) {
 		throw Error( 'MSQTA-ORM: not database name has been specify!' );
 	}
+	if( databaseName === '__msqta__' ) {
+		throw Error( 'MSQTA-ORM: __msqta__ is a reserved word!' );
+	}
+	if( !/^[\w][-.\w\d]+$/i.test( databaseName ) ) {
+		throw Error( 'MSQTA-ORM: database name has invalid characters!' );
+	}
 	
-	settings.callback = callback || MSQTA._Helpers.defaultCallback;
-	settings.context = context || window;
+	settings.callback = settings.callback || callback || MSQTA._Helpers.defaultCallback;
+	settings.context = settings.context || context || window;
 	
 	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
 	return new MSQTA._ORM( settings );
@@ -667,22 +675,28 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	var databaseName = ORM._name,
 		schemaName = schemaDefinition.name;
 	
+	if( schemaName === '__currents_ids__' ) {
+		throw Error( 'MSQTA-ORM: __currents_ids__ is a reserved word!' );
+	}
+	if( !/^[\w][-\w\d]+$/i.test( schemaName ) ) {
+		throw Error( 'MSQTA-ORM: schema name has invalid characters!' );
+	}
 	if( ORM._Schemas[schemaName] && !options.forceDestroy ) {
-		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: "' + schemaName + '" schema already exists on the "' + databaseName + '" database!' );
 	}
 	
 	var schemaFields = schemaDefinition.fields;
 	if( typeof schemaFields !== 'object' || !Object.keys( schemaFields ).length ) {
-		throw Error( 'MSQTA-Schema: "' + schemaName + '" schema definition of the "' + databaseName + '" database is invalid!' );
+		throw Error( 'MSQTA-ORM: "' + schemaName + '" schema definition of the "' + databaseName + '" database is invalid!' );
 	}
 	
 	var pk = schemaDefinition.primaryKey;
 	// check if pk refers to a exisitnet colmun
 	if( !pk || ( pk && !schemaFields[pk] ) ) {
-		throw Error( 'MSQTA-Schema: primary key referes to a non-exisistent fieldName in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: primary key referes to a non-exisistent fieldName in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
 	if( schemaFields[pk].type !== 'integer' ) {
-		throw Error( 'MSQTA-Schema: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
 	// force null values on the primary key, to get working the auto_increment
 	schemaFields[pk].allowNull = true;
@@ -695,7 +709,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 		fieldData = schemaFields[fieldName];
 		if( fieldData.index ) {
 			if( !/^(integer|float|string|date|time|datetime|boolean)$/.test( fieldData.type ) ) {
-				throw Error( 'MSQTA-Schema: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+				throw Error( 'MSQTA-ORM: index type must be of the type: integer|float|string|date|time|datetime, on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 			}
 			schemaIndexes.push( fieldName );
 			fieldData.index = true;

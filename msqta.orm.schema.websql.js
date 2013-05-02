@@ -57,16 +57,13 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
-			
-			createTableQuery = this._createTableQuery,
 			dropTableQuery,
-		
 			registeredSchemaDefinition, currentSchemaDefinition;
 		
 		if( this._isForceDestroy ) {			
 			dropTableQuery = '--MSQTA-ORM: "forceDestroy" flag detected: destroying the "' + schemaName + '" schema from the "' + databaseName + '" database, then it will recreate again--\n\tDROP TABLE IF EXISTS ' + schemaName;
 		
-			ORM._transaction( { query: [ dropTableQuery, createTableQuery ], internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
+			ORM._transaction( { query: dropTableQuery, internalContext: this, internalCallback: this._createSchema, isInternal: true } );
 		
 		// check for schema changes
 		} else {
@@ -177,16 +174,16 @@ MSQTA._Schema.WebSQL = {
 				}
 				ORM._schemasDefinition[schemaName] = currentSchemaDefinition;
 				// delete the index to be delete and create the new one (if any) and done
-				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema11, this );
+				this._ORM._saveSchemaOnTestigoDatabase( this._updateSchema10, this );
 			
 			} else {
 				if( this.devMode ) {
 					console.log( '\tno changes detected on its schema nor its index(s)!' );
 				}
 				if( this._isForceEmpty ) {
-					this._updateSchema10();
-				} else {
 					this._updateSchema9();
+				} else {
+					this._updateSchema8();
 				}
 			}
 		}
@@ -196,14 +193,41 @@ MSQTA._Schema.WebSQL = {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			databaseName = ORM._name,
-			createTableQuery = this._createTableQuery;
+			pk = this._primaryKey,
+			triggerUpdateLastID, setIntialLastID;
 		
 		if( this.devMode ) {
 			console.log( '\tthe schema is a new one, starting creation process!' );
+			console.log( '\t\t1) Creating the "' + schemaName + '" table and its "last_id" trigger' );
 		}
 		
+		// we dont use the default auto_increment mechanism that offers sqlite3 because it's differs from the
+		// indexeddb one, so, this triggers set the new id based on the current value that it's stored on the
+		// table __currents_ids__ at every new insert query.
+		triggerUpdateLastID = (
+			'CREATE TRIGGER IF NOT EXISTS update_last_id_on_' + schemaName +
+				' AFTER INSERT ON ' + schemaName +
+				' BEGIN ' +
+					// increment last_id of the related table by one
+					' UPDATE __currents_ids__ SET last_id = ( ' +
+					// but we need to know if the user at the insert query the id value was provided by the user
+						' SELECT CASE ' +
+						' WHEN ( SELECT 1 WHERE NEW.rowid > ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) )' +
+							' THEN NEW.rowid ' +
+						// or the id was getted directly form the __currents_ids__ table (default)
+						' ELSE ' +
+							' ( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" ) ' +
+						' END ' +
+					// rest of the update query
+					' ) + 1 WHERE table_name = "' + schemaName + '" ; ' +
+				// end outermost begin
+				' END '
+		);
+		
+		setIntialLastID = 'INSERT OR REPLACE INTO __currents_ids__ VALUES( null, "' + schemaName + '", 1 )';
+		
 		// create the new table
-		ORM._transaction( { query: createTableQuery, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
+		ORM._transaction( { query: [ this._createTableQuery, triggerUpdateLastID, setIntialLastID ], internalContext: this, internalCallback: this._updateSchema10, isInternal: true } );
 	},
 	
 	_updateSchema: function() {
@@ -220,7 +244,7 @@ MSQTA._Schema.WebSQL = {
 		this._tempSchemaName = tempSchemaName;
 		
 		if( this.devMode ) {
-			console.log( '\t\t1) Creating table "' + tempSchemaName + '" (this will be the new one at the end of the process)' );
+			console.log( '\t\t1) Creating the "' + tempSchemaName + '" table (this will be the new one at the end of the process)' );
 		}
 		
 		ORM._transaction( { query: createTempTableQuery, internalContext: this, internalCallback: this._updateSchema2, isInternal: true } );
@@ -271,11 +295,11 @@ MSQTA._Schema.WebSQL = {
 			// dont clean again
 			this._isEmpty = true;
 			// goto directly to step 
-			this._updateSchema9();
+			this._updateSchema8();
 		
 		// not need to save records
 		} else if( this._isForceDestroy ) {
-			this._updateSchema8();
+			this._updateSchema7();
 			
 		} else {
 			this._updateSchema4();
@@ -404,24 +428,19 @@ MSQTA._Schema.WebSQL = {
 	
 	_updateSchema7: function() {
 		var ORM = this._ORM;
+		
 		if( this.devMode ) {
-			console.log( '\t\t7) Updating schema process has ended successful' );
+			console.log( '\t\t7) Initialization schema process has ended successful' );
 		}
 		
-		this._updateSchema8();
+		if( this._isForceEmpty && !this._isEmpty ) {
+			this._updateSchema9();
+		} else {
+			this._updateSchema8();
+		}
 	},
 	
 	_updateSchema8: function() {
-		var ORM = this._ORM;
-		
-		if( this._isForceEmpty && !this._isEmpty ) {
-			this._updateSchema10();
-		} else {
-			this._updateSchema9();
-		}
-	},
-	
-	_updateSchema9: function() {
 		// clean
 		delete this._createTableQuery;
 		delete this._indexesToCreate;
@@ -440,16 +459,16 @@ MSQTA._Schema.WebSQL = {
 		this._ORM._initSchemas();
 	},
 	
-	_updateSchema10: function() {
+	_updateSchema9: function() {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
 			schemaName = this._name,
 			emptyQuery = '--MSQTA-ORM: "forceEmpty" flag detected: emptying the "' + schemaName + '" schema from the "' + databaseName + '" database--\n\tDELETE FROM ' + schemaName;
 			
-		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema9, isInternal: true } );
+		ORM._transaction( { query: [ emptyQuery ], internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
 	},
 	
-	_updateSchema11: function() {
+	_updateSchema10: function() {
 		var ORM = this._ORM,
 			schemaName = this._name,
 			indexQueries = [],
@@ -474,7 +493,11 @@ MSQTA._Schema.WebSQL = {
 			}
 		}
 		
-		ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema8, isInternal: true } );
+		if( indexQueries.length ) {
+			ORM._transaction( { query: indexQueries, internalContext: this, internalCallback: this._updateSchema7, isInternal: true } );
+		} else {
+			this._updateSchema7();
+		}
 	},
 /***************************************/
 	get: function( searchValue, userCallback, userContext ) {
@@ -727,8 +750,9 @@ MSQTA._Schema.WebSQL = {
 	put: function( datas, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
-			fields = this._fieldsName, fieldName,
+			fields = this._fieldsName, fieldName, fieldValue,
 			schemaName = this._name,
+			pk = this._primaryKey,
 			insertQueryCols,
 			insertQueryValues = [], values,
 			insertQueryValuesTokens,
@@ -748,14 +772,23 @@ MSQTA._Schema.WebSQL = {
 			for( k = 0; k < m; k++ ) {
 				fieldName = fields[k];
 				insertQueryCols.push( fieldName );
-				values.push( this._getValueBySchema( fieldName, data[fieldName] ) );
-				insertQueryValuesTokens.push( '?' );
+				fieldValue = this._getValueBySchema( fieldName, data[fieldName] );
+				if( fieldName === pk &&
+				// idValue maybe null or an negative number, in theses cases
+				// we need to get the last_id from __currents_ids__
+				( !fieldValue || fieldValue <= 0 ) ) {
+					insertQueryValuesTokens.push( '( SELECT last_id FROM __currents_ids__ WHERE table_name = "' + schemaName + '" )' );
+
+				} else {
+					values.push( fieldValue );
+					insertQueryValuesTokens.push( '?' );
+				}
 			}
 			insertQueryValues.push( values );
 			insertQueries.push( 'INSERT OR ROLLBACK INTO ' + schemaName + ' ( ' + insertQueryCols.join( ', ' ) + ' ) ' + 'VALUES ( ' + insertQueryValuesTokens.join( ' , ' ) + ' )' );
 		}
 		
-		queryData = { 
+		queryData = {
 			query: insertQueries,
 			replacements: insertQueryValues,
 			userCallback: userCallback, 

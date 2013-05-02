@@ -9,6 +9,9 @@ MSQTA._ORM.WebSQL = {
 		(function( self ) {
 			self._testigoDB = window.openDatabase( '__msqta__', 1, '', MSQTA._Helpers.webSQLSize );
 			self._testigoDB.transaction( function( tx ) {
+				if( self.devMode ) {
+					console.log( 'MSQTA.ORM: creating if not exists (first run) the table "databases" on "__msqta__" internal database' );
+				}
 				tx.executeSql( 'CREATE TABLE IF NOT EXISTS databases( id INTEGER PRIMARY KEY, name TEXT UNIQUE, schemas TEXT )' );
 				tx.executeSql( 'SELECT * FROM databases WHERE name = "' + self._name + '"', [], function( tx, results ) {
 					self._open2( results );
@@ -27,11 +30,25 @@ MSQTA._ORM.WebSQL = {
 		// that this._queries in terms at the moment of execute the next query
 		this._queriesInternal = [];
 		
-		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
-
-		this._initCallback.call( this.initContext, true );
+		if( this.devMode ) {
+			console.log( 'MSQTA.ORM: creating/opening the "' + this._name + '" user database' );
+		}			
 		
-		this._initSchemas();
+		this._userDB = window.openDatabase( this._name, 1, '', MSQTA._Helpers.webSQLSize );
+		
+		// create the __currents_ids__ table
+		(function( self ) {
+			self._userDB.transaction( function( tx ) {
+				if( self.devMode ) {
+					console.log( 'MSQTA.ORM: creating if not exists (first run) the table __currents_ids__ on "' + self._name + '" user database' );
+				}
+				tx.executeSql( 'CREATE TABLE IF NOT EXISTS __currents_ids__( id INTEGER PRIMARY KEY, table_name TEXT UNIQUE, last_id INTEGER )' );
+				
+			}, null, function() {
+				self._initCallback.call( self.initContext, true );
+				self._initSchemas();
+			} );
+		})( this );
 	},
 
 	_initSchema: function( Schema ) {
@@ -44,10 +61,13 @@ MSQTA._ORM.WebSQL = {
 	
 	_initSchemas: function() {
 		var self = this,
+			Schema,
 			databaseName = this._name;
 		
 		if( this._schemasToInit.length ) {
-			this._schemasToInit.shift()._init2();
+			// call _init2 using the Schema instance
+			Schema = this._schemasToInit.shift();
+			Schema._init2();
 			
 		} else {
 			this._endSchemasInitialization();
@@ -67,10 +87,11 @@ MSQTA._ORM.WebSQL = {
 			console.log( 'MSQTA-ORM: saving schema definition in the testigo database to keep tracking future changes on it' );
 		}
 		this._testigoDB.transaction( function( tx ) {
-			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')', [], function() {
-				// true for success
-				callback.call( context, arg );
-			} );
+			tx.executeSql( 'REPLACE INTO databases( name, schemas ) VALUES( "' + databaseName + '", ' + "'" + JSON.stringify( schemasDefinition ) + "'" + ')' );
+			
+		}, null, function() {
+			// true for success
+			callback.call( context, arg );
 		} );
 	},
 	
@@ -79,13 +100,23 @@ MSQTA._ORM.WebSQL = {
 	},
 	
 	_deleteUserSchema: function( Schema, queryData ) {
-		var schemaName = Schema._name;
+		var self = this,
+			schemaName = Schema._name;
 		
 		delete this._Schemas[schemaName];
 		delete this._schemasDefinition[schemaName];
 		MSQTA._Helpers.dimSchemaInstance( Schema );
 	
-		this._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
+		this._userDB.transaction( function( tx ) {
+			if( self.devMode ) {
+				console.log( 'MSQTA-ORM: stop tracking "last inserted id" from this schema' );
+			}
+			// stop tracking last_id from this table
+			tx.executeSql( 'DELETE FROM __currents_ids__ WHERE table_name = "' + schemaName + '"' );
+			
+		}, null, function() {
+			self._saveSchemaOnTestigoDatabase( queryData.userCallback, queryData.userContext, true );
+		} );
 	},
 	
 	/**
@@ -99,17 +130,10 @@ MSQTA._ORM.WebSQL = {
 	_transaction: function( queryData ) {
 		var callback = queryData.userCallback,
 			context = queryData.userContext;
-		
-		if( callback && typeof callback !== 'function' ) {
-			throw Error( 'MSQTA-ORM: supplied callback is not a function: ', callback );
-		}
+
 		// use default callback
 		if( !callback ) {
 			queryData.userCallback = MSQTA._Helpers.defaultCallback;
-		}
-		
-		if( context && typeof context !== 'object' ) {
-			throw Error( 'MSQTA-ORM: supplied context is not an object: ', context );
 		}
 		// use window as context
 		if( !context ) {
@@ -232,10 +256,10 @@ MSQTA._ORM.WebSQL = {
 			MSQTA._Errors.batch1( databaseName, data );
 		}
 		
-		if( typeof callback !== 'function' ) {
+		if( !callback ) {
 			callback = MSQTA._Helpers.defaultCallback;
 		}
-		if( typeof context !== 'object' ) {
+		if( !context ) {
 			context = window;
 		}
 		// agrup arguments for a better manipulation
