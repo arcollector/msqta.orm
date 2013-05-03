@@ -144,14 +144,26 @@ MSQTA._Helpers = {
 	},
 	
 	castDate: function( value ) {
-		var d = value.split( '-' );
+		var d;
+		
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d;
+		}
+		
+		d = value.split( '-' );
 		return new Date( d[0], d[1]-1, d[2], 0, 0, 0, 0 );
 	},
 	
 	castTime: function( value ) {
-		var d = new Date(),
-			t = value.split( ':' );
+		var d, t;
 		
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d;
+		}
+		
+		d = new Date();
+		t = value.split( ':' );
+
 		d.setHours( t[0] );
 		d.setMinutes( t[1] );
 		d.setSeconds( t[2] );
@@ -160,13 +172,19 @@ MSQTA._Helpers = {
 	},
 	
 	castDateTime: function( value ) {
-		var d = value.split( ' ' ),
-			d1 = d[0].split( '-' ),
-			d2 = d[1].split( ':' );
+		var d, d1, d2;
+		
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d;
+		}
+		
+		d = value.split( ' ' );
+		d1 = d[0].split( '-' );
+		d2 = d[1].split( ':' );
 		
 		return new Date( d1[0], d1[1]-1, d1[2], d2[0], d2[1], d2[2], 0 );
 	},
-	
+
 	castBoolean: function( value ) {
 		return !!value;
 	},
@@ -228,7 +246,6 @@ MSQTA._Helpers = {
 	},
 
 	instantiateSchema: function( ORM, schemaPrototype, schemaDefinition, implementation, args ) {
-		
 		var options = {},
 			schema;
 
@@ -295,10 +312,10 @@ MSQTA._Helpers = {
 	},
 	
 	indexedDBZeros: {
-		string: "",
+		string: '',
 		int: 0,
 		integer: 0,
-		text: "",
+		text: '',
 		object: {},
 		array: [],
 		date: new Date( 0, 0, 0 ),
@@ -342,7 +359,11 @@ MSQTA._Helpers = {
 			schemaFieldData.isJSON = type === 'object' || type === 'array';
 		
 		}
-	}
+	},
+	
+	tryJSONDate: function( value ) {
+		return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/).test( value ) ? new Date( value ) : false;
+	},
 };
 /***************************************/
 MSQTA._Helpers.WebSQLSanitizers = {
@@ -474,10 +495,6 @@ MSQTA._Helpers.WebSQLSanitizers = {
 /***************************************/
 MSQTA._Helpers.IndexedDBSanitizers = {
 	
-	tryJSONDate: function( value ) {
-		return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/).test( value ) ? new Date( value ) : false;
-	},
-	
 	getSanitizer: function( dataType ) {
 		if( dataType === 'string' || dataType === 'text' ) {
 			return this.sanitizeString;
@@ -517,8 +534,8 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return !isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
-			return d;
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d.toJSON();
 		}
 		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
@@ -526,7 +543,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return onZero;
 		}
 		m = m[1].split( '-' );
-		return new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
+		return new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 ).toJSON();
 	},
 	
 	sanitizeTime: function( value, onZero ) {
@@ -535,8 +552,8 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return !isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
-			return d;
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d.toJSON();
 		}
 		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
@@ -554,7 +571,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 		}
 		hourAndMinutes = m[2].split( ':' );
 		seconds = m[3] || 0;
-		return new Date( y[0], y[1], y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 );
+		return new Date( y[0], y[1], y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 ).toJSON();
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
@@ -563,8 +580,8 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return isNaN( value-0 ) ? value : onZero;
 		}
 		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.IndexedDBSanitizers.tryJSONDate( value )) ) {
-			return d;
+		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
+			return d.toJSON();
 		}
 		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?::(\d{2})[^Z]+Z|:(\d{2}))?$/.exec( value );
@@ -575,7 +592,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 		y = m[1].split( '-' );
 		hourAndMinutes = m[2].split( ':' );
 		seconds = m[3] || m[4] || 0;
-		return new Date( y[0], y[1]-1, y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 );
+		return new Date( y[0], y[1]-1, y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 ).toJSON();
 	},
 	
 	sanitizeObj: function( value, onZero ) {
