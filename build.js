@@ -106,7 +106,7 @@ function replaceKeywords( value ) {
 
 function replaceWebSQLKeywords( value ) {
 	var methods = [ '_open', '_open2', '_initSchema', '_initSchemas', '_endSchemasInitialization', '_saveSchemaOnTestigoDatabase', '_deleteUserDatabase', '_deleteUserSchema', '_error', '_transaction', '_transaction2', '_results', '_continue', '_batch', '_init', '_init2', '_getIndexUniqueQuery', '_getIndexQuery', '_checkSchemaChanges', '_createSchema', '_updateSchema', '_updateSchema2', '_updateSchema3', '_updateSchema4', '_updateSchema5', '_updateSchema6', '_updateSchema7', '_updateSchema8', '_getByCallback', '_processResults', '_destroy', '_updateSchema9', '_updateSchema10', '_getIndexName' ];
-	var properties = [ '_testigoDB', '_schemasDefinition', '_queriesInternal', '_userDB', '_lastQuery', 'query', 'replacements', 'isUpdate', 'isDelete', 'isInsert', '_createTableQuery', '_indexesSQL', '_indexesToDelete', '_offset', '_tempSchemaName', '_queryErrorID', '_isSchemaDropped', 'isInternal', 'internalCallback', 'internalContext', '_isEmpty', '_indexesToCreate' ];
+	var properties = [ '_testigoDB', '_schemasDefinition', '_queriesInternal', '_userDB', '_lastQuery', 'query', 'replacements', 'isUpdate', 'isDelete', 'isInsert', '_createTableQuery', '_indexesSQL', '_indexesToDelete', '_offset', '_tempSchemaName', '_queryErrorID', '_isSchemaDropped', 'isInternal', 'internalCallback', 'internalContext', '_isEmpty', '_indexesToCreate', 'insertedIDs' ];
 	var all = methods.concat( properties );
 	var i = 0, l = all.length, firstChar;
 	for( ; i < l; i++ ) {

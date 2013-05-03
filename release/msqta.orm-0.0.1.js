@@ -1615,12 +1615,12 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	// this one is called when _put, _set, _del, _empty finish
-	_done: function( queryData, results ) {
+	_done: function( queryData, results, allIDs ) {
 		MSQTA._Helpers.unblockWindow();
 		
 		queryData.activeDatabase.close();
 		// come back to the user
-		queryData.userCallback.call( queryData.userContext, results );
+		queryData.userCallback.call( queryData.userContext, results, allIDs );
 		// keep executing more queries
 		this._continue();
 	},
@@ -1630,11 +1630,17 @@ MSQTA._ORM.IndexedDB = {
 			objectStore = queryData.activeObjectStore,
 			datas = queryData.data,
 			currentIndex = 0,
+			// used when you insert multiple objects
+			allIDs = [],
 			totalQueries = datas.length;
 		
 		var next = function( lastID ) {
+			if( lastID ) {
+				allIDs.push( lastID );
+			}
+			
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, lastID );
+				self._done( queryData, lastID, allIDs );
 				
 			} else {
 				// insert the data
@@ -2761,9 +2767,10 @@ MSQTA._ORM.WebSQL = {
 
 		// save a reference used in the success and error functions
 		var self = this,
-			// update an update at time is executed, so we need to keep tracking manually
-			// the affected rows
+			// update an update at time is executed, so we need to keep tracking manually the affected rows
 			rowsAffected = 0,
+			// keep track of all new inserted ids
+			allIDs = [],
 			query = queryData.query;
 		
 		if( !Array.isArray( query ) ) {
@@ -2774,7 +2781,12 @@ MSQTA._ORM.WebSQL = {
 		// track the rows affected in the operation
 		var noop = queryData.isUpdate ? function( tx, results ) {
 			rowsAffected += results.rowsAffected;
-		} : MSQTA._Helpers.noop;
+		// you can insert multiples rows in an single call the put method
+		// we need to keep track these new ids
+		} : ( queryData.isInsert ? function( tx, results ) {
+			allIDs.push( results.insertId );
+		// do nothing
+		} : MSQTA._Helpers.noop );
 		
 		var success = function( tx, results ) {
 			if( queryData.isUpdate ) {
@@ -2783,6 +2795,7 @@ MSQTA._ORM.WebSQL = {
 		
 			} else if( queryData.isInsert ) {
 				queryData.returnValue = results.insertId;
+				queryData.insertedIDs = allIDs;
 			
 			} else if( queryData.isDelete ) {
 				queryData.returnValue = results.rowsAffected;
@@ -2831,7 +2844,7 @@ MSQTA._ORM.WebSQL = {
 		// get back with the user
 		} else {
 			// only delete, update, insert quries falls here
-			queryData.userCallback.call( queryData.userContext, queryData.returnValue );
+			queryData.userCallback.call( queryData.userContext, queryData.returnValue, queryData.insertedIDs );
 		}
 		
 		this._continue();

@@ -832,12 +832,12 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	// this one is called when _put, _set, _del, _empty finish
-	_done: function( queryData, results ) {
+	_done: function( queryData, results, allIDs ) {
 		MSQTA._Helpers.unblockWindow();
 		
 		queryData.activeDatabase.close();
 		// come back to the user
-		queryData.userCallback.call( queryData.userContext, results );
+		queryData.userCallback.call( queryData.userContext, results, allIDs );
 		// keep executing more queries
 		this._continue();
 	},
@@ -847,11 +847,17 @@ MSQTA._ORM.IndexedDB = {
 			objectStore = queryData.activeObjectStore,
 			datas = queryData.data,
 			currentIndex = 0,
+			// used when you insert multiple objects
+			allIDs = [],
 			totalQueries = datas.length;
 		
 		var next = function( lastID ) {
+			if( lastID ) {
+				allIDs.push( lastID );
+			}
+			
 			if( currentIndex === totalQueries ) {
-				self._done( queryData, lastID );
+				self._done( queryData, lastID, allIDs );
 				
 			} else {
 				// insert the data
