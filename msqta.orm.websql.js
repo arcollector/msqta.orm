@@ -7,6 +7,7 @@ MSQTA._ORM.WebSQL = {
 	_open: function() {
 		// put in a close to handle various open at "the same time"
 		(function( self ) {
+			MSQTA._Helpers.blockWindow();
 			self._testigoDB = window.openDatabase( '__msqta__', 1, '', MSQTA._Helpers.webSQLSize );
 			self._testigoDB.transaction( function( tx ) {
 				if( self.devMode ) {
@@ -45,6 +46,7 @@ MSQTA._ORM.WebSQL = {
 				tx.executeSql( 'CREATE TABLE IF NOT EXISTS __currents_ids__( id INTEGER PRIMARY KEY, table_name TEXT UNIQUE, last_id INTEGER )' );
 				
 			}, null, function() {
+				MSQTA._Helpers.unblockWindow();
 				self._initCallback.call( self.initContext, true );
 				self._initSchemas();
 			} );
@@ -65,11 +67,13 @@ MSQTA._ORM.WebSQL = {
 			databaseName = this._name;
 		
 		if( this._schemasToInit.length ) {
+			MSQTA._Helpers.blockWindow();
 			// call _init2 using the Schema instance
 			Schema = this._schemasToInit.shift();
 			Schema._init2();
 			
 		} else {
+			MSQTA._Helpers.unblockWindow();
 			this._endSchemasInitialization();
 		}
 	},
@@ -150,7 +154,8 @@ MSQTA._ORM.WebSQL = {
 			return;
 		}
 		this._isWaiting = true;
-
+		MSQTA._Helpers.blockWindow();
+		
 		this._transaction2( queryData );
 	},
 	
@@ -237,6 +242,8 @@ MSQTA._ORM.WebSQL = {
 	},
 	
 	_continue: function() {
+		MSQTA._Helpers.unblockWindow();
+		
 		if( !this._isWaiting ) {
 			// more queries to be executed in the queue
 			if( this._queriesInternal.length ) {

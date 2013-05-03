@@ -130,6 +130,8 @@ MSQTA._ORM.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: opening the testigo database "__msqta__"' );
 		}
+	
+		MSQTA._Helpers.blockWindow();
 		
 		var self = this,
 			databaseName = this._name,
@@ -203,6 +205,7 @@ MSQTA._ORM.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: "' + this._name + '" database has been created!' );
 		}
+		MSQTA._Helpers.unblockWindow();
 		// trigger event
 		this._initCallback.call( this._initContext, true );
 		// trigger the schemas process
@@ -214,6 +217,7 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			req = MSQTA._IndexedDB.deleteDatabase( databaseName );
 		
+		MSQTA._Helpers.blockWindow();
 		req.onsuccess = function( e ) {
 			// ahora debo borrar toda esa information de __msqta__.databases
 			req = self._openTestigoDatabase();
@@ -228,6 +232,7 @@ MSQTA._ORM.IndexedDB = {
 						db.close();
 						
 						MSQTA._Helpers.dimORMInstance( self );
+						MSQTA._Helpers.unblockWindow();
 						
 						callback.call( context || window, true );
 					};
@@ -236,6 +241,7 @@ MSQTA._ORM.IndexedDB = {
 		};
 		
 		req.onerror = function( e ) {
+			MSQTA._Helpers.unblockWindow();
 			callback.call( context || window, false );
 		};
 	},
@@ -254,7 +260,9 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			req;
 		
-		if( this._schemasToInit.length ) {			
+		if( this._schemasToInit.length ) {	
+			MSQTA._Helpers.blockWindow();
+			
 			req = this._openTestigoDatabase();
 			req.onsuccess = function( e ) {
 				var db = this.result,
@@ -678,7 +686,8 @@ MSQTA._ORM.IndexedDB = {
 		delete Schema._isForceDestroy;
 		delete Schema._isForceEmpty;
 		delete this._currentSchema;
-		
+
+		MSQTA._Helpers.unblockWindow();
 		// continue with more shit
 		this._initSchemas();
 	},
@@ -756,7 +765,7 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	_preExec: function( queryData ) {
-		if( typeof queryData.userCallback !== 'function' ) {
+		if( !queryData.userCallback ) {
 			queryData.userCallback = MSQTA._Helpers.defaultCallback;
 		}
 		if( !queryData.userContext ) {
@@ -770,6 +779,7 @@ MSQTA._ORM.IndexedDB = {
 			return;
 		}
 		this._isWaiting = true;
+		MSQTA._Helpers.blockWindow();
 		
 		this._exec();
 	},
@@ -823,6 +833,8 @@ MSQTA._ORM.IndexedDB = {
 	
 	// this one is called when _put, _set, _del, _empty finish
 	_done: function( queryData, results ) {
+		MSQTA._Helpers.unblockWindow();
+		
 		queryData.activeDatabase.close();
 		// come back to the user
 		queryData.userCallback.call( queryData.userContext, results );
@@ -1218,10 +1230,6 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	destroy: function( callback, context ) {
-		if( typeof callback !== 'function' ) {
-			callback = MSQTA._Helpers.noop;
-		}
-		
-		this._deleteUserDatabase( callback, context );
+		this._deleteUserDatabase( callback || MSQTA._Helpers.noop, context );
 	}
 };

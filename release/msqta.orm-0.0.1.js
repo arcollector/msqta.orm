@@ -82,6 +82,11 @@ MSQTA._Errors = {
 };
 /***************************************/
 /***************************************/
+MSQTA._Messages = {
+	'app is working': 'The application is currently manipulating your local database, please wait a moment, leaving the application right now will cause that your database may get broken!',
+};
+/***************************************/
+/***************************************/
 MSQTA._Helpers = {
 	noop: function() {
 	},
@@ -97,6 +102,20 @@ MSQTA._Helpers = {
 		} else {
 			console.log( arguments[0] );
 		}
+	},
+	
+	blockWindow: function() {
+		window.addEventListener( 'beforeunload', this.preLeaveWindow, false );
+	},
+	unblockWindow: function() {
+		window.removeEventListener( 'beforeunload', this.preLeaveWindow, false );
+	},
+	/**
+	* @scope window [beforeunload]
+	*/
+	preLeaveWindow: function( e ) {
+		e.returnValue = MSQTA._Messages['app is working'];
+		return MSQTA._Messages['app is working'];
 	},
 	
 	webSQLSize: 2 * 1024 * 1024,
@@ -877,6 +896,8 @@ MSQTA._ORM.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: opening the testigo database "__msqta__"' );
 		}
+	
+		MSQTA._Helpers.blockWindow();
 		
 		var self = this,
 			databaseName = this._name,
@@ -950,6 +971,7 @@ MSQTA._ORM.IndexedDB = {
 		if( this.devMode ) {
 			console.log( 'MSQTA-ORM: "' + this._name + '" database has been created!' );
 		}
+		MSQTA._Helpers.unblockWindow();
 		// trigger event
 		this._initCallback.call( this._initContext, true );
 		// trigger the schemas process
@@ -961,6 +983,7 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			req = MSQTA._IndexedDB.deleteDatabase( databaseName );
 		
+		MSQTA._Helpers.blockWindow();
 		req.onsuccess = function( e ) {
 			// ahora debo borrar toda esa information de __msqta__.databases
 			req = self._openTestigoDatabase();
@@ -975,6 +998,7 @@ MSQTA._ORM.IndexedDB = {
 						db.close();
 						
 						MSQTA._Helpers.dimORMInstance( self );
+						MSQTA._Helpers.unblockWindow();
 						
 						callback.call( context || window, true );
 					};
@@ -983,6 +1007,7 @@ MSQTA._ORM.IndexedDB = {
 		};
 		
 		req.onerror = function( e ) {
+			MSQTA._Helpers.unblockWindow();
 			callback.call( context || window, false );
 		};
 	},
@@ -1001,7 +1026,9 @@ MSQTA._ORM.IndexedDB = {
 			databaseName = this._name,
 			req;
 		
-		if( this._schemasToInit.length ) {			
+		if( this._schemasToInit.length ) {	
+			MSQTA._Helpers.blockWindow();
+			
 			req = this._openTestigoDatabase();
 			req.onsuccess = function( e ) {
 				var db = this.result,
@@ -1425,7 +1452,8 @@ MSQTA._ORM.IndexedDB = {
 		delete Schema._isForceDestroy;
 		delete Schema._isForceEmpty;
 		delete this._currentSchema;
-		
+
+		MSQTA._Helpers.unblockWindow();
 		// continue with more shit
 		this._initSchemas();
 	},
@@ -1503,7 +1531,7 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	_preExec: function( queryData ) {
-		if( typeof queryData.userCallback !== 'function' ) {
+		if( !queryData.userCallback ) {
 			queryData.userCallback = MSQTA._Helpers.defaultCallback;
 		}
 		if( !queryData.userContext ) {
@@ -1517,6 +1545,7 @@ MSQTA._ORM.IndexedDB = {
 			return;
 		}
 		this._isWaiting = true;
+		MSQTA._Helpers.blockWindow();
 		
 		this._exec();
 	},
@@ -1570,6 +1599,8 @@ MSQTA._ORM.IndexedDB = {
 	
 	// this one is called when _put, _set, _del, _empty finish
 	_done: function( queryData, results ) {
+		MSQTA._Helpers.unblockWindow();
+		
 		queryData.activeDatabase.close();
 		// come back to the user
 		queryData.userCallback.call( queryData.userContext, results );
@@ -1965,11 +1996,7 @@ MSQTA._ORM.IndexedDB = {
 	},
 	
 	destroy: function( callback, context ) {
-		if( typeof callback !== 'function' ) {
-			callback = MSQTA._Helpers.noop;
-		}
-		
-		this._deleteUserDatabase( callback, context );
+		this._deleteUserDatabase( callback || MSQTA._Helpers.noop, context );
 	}
 };
 MSQTA._Schema.IndexedDB = {
@@ -2559,6 +2586,7 @@ MSQTA._ORM.WebSQL = {
 	_open: function() {
 		// put in a close to handle various open at "the same time"
 		(function( self ) {
+			MSQTA._Helpers.blockWindow();
 			self._testigoDB = window.openDatabase( '__msqta__', 1, '', MSQTA._Helpers.webSQLSize );
 			self._testigoDB.transaction( function( tx ) {
 				if( self.devMode ) {
@@ -2597,6 +2625,7 @@ MSQTA._ORM.WebSQL = {
 				tx.executeSql( 'CREATE TABLE IF NOT EXISTS __currents_ids__( id INTEGER PRIMARY KEY, table_name TEXT UNIQUE, last_id INTEGER )' );
 				
 			}, null, function() {
+				MSQTA._Helpers.unblockWindow();
 				self._initCallback.call( self.initContext, true );
 				self._initSchemas();
 			} );
@@ -2617,11 +2646,13 @@ MSQTA._ORM.WebSQL = {
 			databaseName = this._name;
 		
 		if( this._schemasToInit.length ) {
+			MSQTA._Helpers.blockWindow();
 			// call _init2 using the Schema instance
 			Schema = this._schemasToInit.shift();
 			Schema._init2();
 			
 		} else {
+			MSQTA._Helpers.unblockWindow();
 			this._endSchemasInitialization();
 		}
 	},
@@ -2702,7 +2733,8 @@ MSQTA._ORM.WebSQL = {
 			return;
 		}
 		this._isWaiting = true;
-
+		MSQTA._Helpers.blockWindow();
+		
 		this._transaction2( queryData );
 	},
 	
@@ -2789,6 +2821,8 @@ MSQTA._ORM.WebSQL = {
 	},
 	
 	_continue: function() {
+		MSQTA._Helpers.unblockWindow();
+		
 		if( !this._isWaiting ) {
 			// more queries to be executed in the queue
 			if( this._queriesInternal.length ) {

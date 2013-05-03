@@ -82,6 +82,11 @@ MSQTA._Errors = {
 };
 /***************************************/
 /***************************************/
+MSQTA._Messages = {
+	'app is working': 'The application is currently manipulating your local database, please wait a moment, leaving the application right now will cause that your database may get broken!',
+};
+/***************************************/
+/***************************************/
 MSQTA._Helpers = {
 	noop: function() {
 	},
@@ -97,6 +102,20 @@ MSQTA._Helpers = {
 		} else {
 			console.log( arguments[0] );
 		}
+	},
+	
+	blockWindow: function() {
+		window.addEventListener( 'beforeunload', this.preLeaveWindow, false );
+	},
+	unblockWindow: function() {
+		window.removeEventListener( 'beforeunload', this.preLeaveWindow, false );
+	},
+	/**
+	* @scope window [beforeunload]
+	*/
+	preLeaveWindow: function( e ) {
+		e.returnValue = MSQTA._Messages['app is working'];
+		return MSQTA._Messages['app is working'];
 	},
 	
 	webSQLSize: 2 * 1024 * 1024,
