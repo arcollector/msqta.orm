@@ -1184,7 +1184,7 @@ MSQTA._ORM.IndexedDB = {
 		
 		for( fieldName in record ) {
 			if( schemaFields[fieldName].isDate ) {
-				record[fieldName] = new Date( record[fieldName] );
+				record[fieldName] = MSQTA._Helpers.castDateTypeOf( record[fieldName] );
 			}
 		}
 	},

@@ -124,15 +124,9 @@ MSQTA._Helpers = {
 		if( dataType === 'object' || dataType === 'array' ) {
 			return this.castObj;
 		}
-		if( dataType === 'datetime' ) {
-			return this.castDateTime;
+		if( dataType === 'datetime' || dataType === 'date' || dataType === 'time' ) {
+			return this.castDateTypeOf;
 		}
-		if( dataType === 'date' ) {
-			return this.castDate;
-		} 
-		if( dataType === 'time' ) {
-			return this.castTime;
-		} 
 		if( dataType === 'boolean' ) {
 			return this.castBoolean;
 		} 
@@ -143,34 +137,8 @@ MSQTA._Helpers = {
 		return JSON.parse( value );
 	},
 	
-	castDate: function( value ) {
-		var d;
-
-		d = value.split( '-' );
-		return new Date( d[0], d[1]-1, d[2], 0, 0, 0, 0 );
-	},
-	
-	castTime: function( value ) {
-		var d, t;
-		
-		d = new Date();
-		t = value.split( ':' );
-
-		d.setHours( t[0] );
-		d.setMinutes( t[1] );
-		d.setSeconds( t[2] );
-		
-		return d;
-	},
-	
-	castDateTime: function( value ) {
-		var d, d1, d2;
-		
-		d = value.split( ' ' );
-		d1 = d[0].split( '-' );
-		d2 = d[1].split( ':' );
-		
-		return new Date( d1[0], d1[1]-1, d1[2], d2[0], d2[1], d2[2], 0 );
+	castDateTypeOf: function( value ) {
+		return new Date( value );
 	},
 
 	castBoolean: function( value ) {
@@ -306,9 +274,9 @@ MSQTA._Helpers = {
 		text: '',
 		object: {},
 		array: [],
-		date: +new Date( 0, 0, 0 ),
-		time: +new Date( 0, 0, 0 ),
-		datetime: +new Date( 0, 0, 0 ),
+		date: -2209075200000,
+		time: -2209075200000,
+		datetime: -2209075200000,
 		float: 0,
 		boolean: false
 	},
@@ -366,29 +334,6 @@ MSQTA._Helpers = {
 		return false;
 	},
 	
-	getDateStr: function( dateObj ) {
-		if( isNaN( dateObj-0 ) ) {
-			return null;
-		}
-		
-		var m = dateObj.getMonth() + 1,
-			d = dateObj.getDate();
-		
-		return dateObj.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
-	},
-	
-	getTimeStr: function( dateObj ) {
-		return !isNaN( dateObj-0 ) ? dateObj.toTimeString().substring( 0, 8 ) : null;
-	},
-	
-	getDateTimeStr: function( dateObj ) {
-		if( isNaN( dateObj-0 ) ) {
-			return null;
-		}
-		
-		return this.getDateStr( dateObj ) + ' ' + this.getTimeStr( dateObj );
-	},
-	
 	resetTimeDate: function( dateObj ) {
 		dateObj.setHours( 0 );
 		dateObj.setMinutes( 0 );
@@ -400,6 +345,10 @@ MSQTA._Helpers = {
 		dateObj.setFullYear( 0 );
 		dateObj.setDate( 0 );
 		dateObj.setMonth( 0 );
+	},
+	
+	getUTCDateInMilliseconds: function( dateObj ) {
+		return Date.UTC( dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes(), dateObj.getSeconds(), 0 )
 	}
 };
 /***************************************/
@@ -416,13 +365,13 @@ MSQTA._Helpers.WebSQLSanitizers = {
 			return this.sanitizeObj;
 		}
 		if( dataType === 'date' ) {
-			return this.sanitizeDate;
+			return MSQTA._Helpers.IndexedDBSanitizers.sanitizeDate;
 		} 
 		if( dataType === 'time' ) {
-			return this.sanitizeTime;
+			return MSQTA._Helpers.IndexedDBSanitizers.sanitizeTime;
 		} 
 		if( dataType === 'datetime' ) {
-			return this.sanitizeDatetime;
+			return MSQTA._Helpers.IndexedDBSanitizers.sanitizeDatetime;
 		} 
 		if( dataType === 'boolean' ) {
 			return this.sanitizeBoolean;
@@ -436,66 +385,6 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	sanitizeInt: function( value, onZero ) {
 		value -= 0;
 		return !value ? onZero : value;
-	},
-	
-	sanitizeDate: function( value, onZero ) {
-		var m, d;
-		
-		if( value instanceof Date ) {
-			return MSQTA._Helpers.getDateStr( value ) || onZero;
-		}
-		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
-			return MSQTA._Helpers.getDateStr( d );
-		}
-		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
-			return MSQTA._Helpers.getDateStr( d );
-		}
-		
-		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
-		if( !m ) {
-			return onZero;
-		}
-		return m[1];
-	},
-	
-	sanitizeTime: function( value, onZero ) {
-		var m, d;
-		
-		if( value instanceof Date ) {
-			return MSQTA._Helpers.getTimeStr( value ) || onZero;
-		}
-		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
-			return MSQTA._Helpers.getTimeStr( d );
-		}
-		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
-			return MSQTA._Helpers.getTimeStr( d );
-		}
-		
-		m = /^(?:\d{4}-\d{2}-\d{2}\s)?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
-		if( !m ) {
-			return onZero;
-		}
-		return m[1] + ( m[2]  || ':00' );
-	},
-	
-	sanitizeDatetime: function( value, onZero ) {
-		var m, d;
-		
-		if( value instanceof Date ) {
-			return MSQTA._Helpers.getDateTimeStr( value ) || onZero;
-		}
-		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
-			return MSQTA._Helpers.getDateTimeStr( d );
-		}
-		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
-			return MSQTA._Helpers.getDateTimeStr( d );
-		}
-		
-		m = /^(\d{4}-\d{2}-\d{2}\s)(\d{2}:\d{2})(:\d{2})?$/.exec( value );
-		if( !m ) {
-			return onZero;
-		}
-		return m[1] + m[2] + ( m[3] || ':00' );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
@@ -588,15 +477,15 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 				return onZero;
 			}
 			MSQTA._Helpers.resetTimeDate( value );
-			return +value;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( value );
 		}
 		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
 			MSQTA._Helpers.resetTimeDate( d );
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
 			MSQTA._Helpers.resetTimeDate( d );
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
@@ -604,7 +493,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return onZero;
 		}
 		m = m[1].split( '-' );
-		return +new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
+		return Date.UTC( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
 	},
 	
 	sanitizeTime: function( value, onZero ) {
@@ -615,41 +504,46 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 				return onZero;
 			}
 			MSQTA._Helpers.resetDateDate( value );
-			return +value;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( value );
 		}
 		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
 			MSQTA._Helpers.resetDateDate( d );
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
 			MSQTA._Helpers.resetDateDate( d );
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		// try to parse the date string
 		m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}):(\d{2})(?::(\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return +new Date( 0, 0, 0, m[1], m[2], m[3] || 0, 0 );
+		return Date.UTC( 0, 0, 0, m[1], m[2], m[3] || 0, 0 );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
+		
 		if( value instanceof Date ) {
-			return isNaN( value-0 ) ? onZero : +value;
+			if( isNaN( value-0 ) ) {
+				return onZero;
+			}
+			MSQTA._Helpers.resetDateDate( value );
+			return MSQTA._Helpers.getUTCDateInMilliseconds( value );
 		}
 		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
-			return +d;
+			return MSQTA._Helpers.getUTCDateInMilliseconds( d );
 		}
 		// try to parse the date string
 		m = /^(\d{4})-(\d{2})-(\d{2})(?:\s(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return +new Date( m[1], m[2]-1, m[3], m[4]|| 0, m[5] || 0, m[6] || 0, 0 );
+		return Date.UTC( m[1], m[2]-1, m[3], m[4]|| 0, m[5] || 0, m[6] || 0, 0 );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
