@@ -193,6 +193,10 @@ MSQTA._ORM.WebSQL = {
 		
 			} else if( queryData.isInsert ) {
 				queryData.returnValue = results.insertId;
+				// only a one row has been inserted
+				if( !allIDs.length ) {
+					allIDs.push( results.insertId );
+				}
 				queryData.insertedIDs = allIDs;
 			
 			} else if( queryData.isDelete ) {

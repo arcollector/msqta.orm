@@ -145,21 +145,13 @@ MSQTA._Helpers = {
 	
 	castDate: function( value ) {
 		var d;
-		
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d;
-		}
-		
+
 		d = value.split( '-' );
 		return new Date( d[0], d[1]-1, d[2], 0, 0, 0, 0 );
 	},
 	
 	castTime: function( value ) {
 		var d, t;
-		
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d;
-		}
 		
 		d = new Date();
 		t = value.split( ':' );
@@ -173,10 +165,6 @@ MSQTA._Helpers = {
 	
 	castDateTime: function( value ) {
 		var d, d1, d2;
-		
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d;
-		}
 		
 		d = value.split( ' ' );
 		d1 = d[0].split( '-' );
@@ -318,9 +306,9 @@ MSQTA._Helpers = {
 		text: '',
 		object: {},
 		array: [],
-		date: new Date( 0, 0, 0 ),
-		time: new Date( 0, 0, 0 ),
-		datetime: new Date( 0, 0, 0 ),
+		date: +new Date( 0, 0, 0 ),
+		time: +new Date( 0, 0, 0 ),
+		datetime: +new Date( 0, 0, 0 ),
 		float: 0,
 		boolean: false
 	},
@@ -350,20 +338,69 @@ MSQTA._Helpers = {
 		// sanitizer function
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
 		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
-		schemaFieldData.toJS = MSQTA._Helpers.getCaster( type );
+		
 		schemaFieldData.isDate = type === 'date' || type === 'time' || type === 'datetime';
 		
 		if( implementation === 'webSQL' ) {
 			schemaFieldData.abstract = type;
 			schemaFieldData.real = realDataType + ( allowNull ? ' NULL' : '' );
 			schemaFieldData.isJSON = type === 'object' || type === 'array';
-		
+			schemaFieldData.toJS = MSQTA._Helpers.getCaster( type );
 		}
 	},
 	
 	tryJSONDate: function( value ) {
 		return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/).test( value ) ? new Date( value ) : false;
 	},
+	
+	tryMillisecondsDate: function( value ) {
+		var d;
+		value -= 0;
+		if( value ) {
+			d = new Date( value );
+			if( isNaN( d-0 ) ) {
+				return false;
+			}
+			return d;
+		}
+		return false;
+	},
+	
+	getDateStr: function( dateObj ) {
+		if( isNaN( dateObj-0 ) ) {
+			return null;
+		}
+		
+		var m = dateObj.getMonth() + 1,
+			d = dateObj.getDate();
+		
+		return dateObj.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
+	},
+	
+	getTimeStr: function( dateObj ) {
+		return !isNaN( dateObj-0 ) ? dateObj.toTimeString().substring( 0, 8 ) : null;
+	},
+	
+	getDateTimeStr: function( dateObj ) {
+		if( isNaN( dateObj-0 ) ) {
+			return null;
+		}
+		
+		return this.getDateStr( dateObj ) + ' ' + this.getTimeStr( dateObj );
+	},
+	
+	resetTimeDate: function( dateObj ) {
+		dateObj.setHours( 0 );
+		dateObj.setMinutes( 0 );
+		dateObj.setSeconds( 0 );
+		dateObj.setMilliseconds( 0 );
+	},
+	
+	resetDateDate: function( dateObj ) {
+		dateObj.setFullYear( 0 );
+		dateObj.setDate( 0 );
+		dateObj.setMonth( 0 );
+	}
 };
 /***************************************/
 MSQTA._Helpers.WebSQLSanitizers = {
@@ -403,14 +440,17 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
+		
 		if( value instanceof Date ) {
-			if( isNaN( value-0 ) ) {
-				return onZero;
-			}
-			m = value.getMonth() + 1;
-			d = value.getDate();
-			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d );
+			return MSQTA._Helpers.getDateStr( value ) || onZero;
 		}
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			return MSQTA._Helpers.getDateStr( d );
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			return MSQTA._Helpers.getDateStr( d );
+		}
+		
 		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
 		if( !m ) {
 			return onZero;
@@ -419,31 +459,43 @@ MSQTA._Helpers.WebSQLSanitizers = {
 	},
 	
 	sanitizeTime: function( value, onZero ) {
+		var m, d;
+		
 		if( value instanceof Date ) {
-			return !isNaN( value-0 ) ? value.toTimeString().substring( 0, 8 ) : onZero;
+			return MSQTA._Helpers.getTimeStr( value ) || onZero;
 		}
-		var m = /^(?:\d{4}-\d{2}-\d{2}(?: |T))?(\d{2}:\d{2})(?:(:\d{2})[^Z]+Z|(:\d{2}))?$/.exec( value );
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			return MSQTA._Helpers.getTimeStr( d );
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			return MSQTA._Helpers.getTimeStr( d );
+		}
+		
+		m = /^(?:\d{4}-\d{2}-\d{2}\s)?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return m[1] + ( m[2] || m[3] || ':00' );
+		return m[1] + ( m[2]  || ':00' );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
+		
 		if( value instanceof Date ) {
-			if( isNaN( value-0 ) ) {
-				return onZero;
-			}
-			m = value.getMonth() + 1;
-			d = value.getDate();
-			return value.getFullYear() + '-' + ( m < 10 ? '0' + m : m ) + '-' + ( d < 10 ? '0' + d : d ) + ' ' + value.toTimeString().substring( 0, 8 );
+			return MSQTA._Helpers.getDateTimeStr( value ) || onZero;
 		}
-		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?:(:\d{2})[^Z]+Z|(:\d{2}))?$/.exec( value );
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			return MSQTA._Helpers.getDateTimeStr( d );
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			return MSQTA._Helpers.getDateTimeStr( d );
+		}
+		
+		m = /^(\d{4}-\d{2}-\d{2}\s)(\d{2}:\d{2})(:\d{2})?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		return m[1] + ' ' + m[2] + ( m[3] || m[4] || ':00' );
+		return m[1] + m[2] + ( m[3] || ':00' );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
@@ -530,12 +582,21 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	
 	sanitizeDate: function( value, onZero ) {
 		var m, d;
+		
 		if( value instanceof Date ) {
-			return !isNaN( value-0 ) ? value : onZero;
+			if( isNaN( value-0 ) ) {
+				return onZero;
+			}
+			MSQTA._Helpers.resetTimeDate( value );
+			return +value;
 		}
-		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d.toJSON();
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			MSQTA._Helpers.resetTimeDate( d );
+			return +d;
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			MSQTA._Helpers.resetTimeDate( d );
+			return +d;
 		}
 		// try to parse the date string
 		m = /^(\d{4}-\d{2}-\d{2})/.exec( value );
@@ -543,56 +604,52 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 			return onZero;
 		}
 		m = m[1].split( '-' );
-		return new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 ).toJSON();
+		return +new Date( m[0], m[1]-1, m[2], 0, 0, 0, 0 );
 	},
 	
 	sanitizeTime: function( value, onZero ) {
 		var m, d;
+		
 		if( value instanceof Date ) {
-			return !isNaN( value-0 ) ? value : onZero;
+			if( isNaN( value-0 ) ) {
+				return onZero;
+			}
+			MSQTA._Helpers.resetDateDate( value );
+			return +value;
 		}
-		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d.toJSON();
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			MSQTA._Helpers.resetDateDate( d );
+			return +d;
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			MSQTA._Helpers.resetDateDate( d );
+			return +d;
 		}
 		// try to parse the date string
-		m = /^(\d{4}-\d{2}-\d{2} )?(\d{2}:\d{2})(:\d{2})?$/.exec( value );
+		m = /^(?:\d{4}-\d{2}-\d{2} )?(\d{2}):(\d{2})(?::(\d{2}))?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		var y, hourAndMinutes, seconds;
-		if( !m[1] ) {
-			y = new Date();
-			y = [ y.getFullYear(), y.getMonth(), y.getDate() ];
-		} else {
-			y = m[1].split( '-' );
-			// decrease month number
-			y[1] = y[1]-1;
-		}
-		hourAndMinutes = m[2].split( ':' );
-		seconds = m[3] || 0;
-		return new Date( y[0], y[1], y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 ).toJSON();
+		return +new Date( 0, 0, 0, m[1], m[2], m[3] || 0, 0 );
 	},
 	
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
 		if( value instanceof Date ) {
-			return isNaN( value-0 ) ? value : onZero;
+			return isNaN( value-0 ) ? +value : onZero;
 		}
-		// maybe value is a json date??
-		if( (d = MSQTA._Helpers.tryJSONDate( value )) ) {
-			return d.toJSON();
+		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
+			return +d;
+		}
+		if( (d=MSQTA._Helpers.tryJSONDate( value )) ) {
+			return +d;
 		}
 		// try to parse the date string
-		m = /^(\d{4}-\d{2}-\d{2})(?: |T)(\d{2}:\d{2})(?::(\d{2})[^Z]+Z|:(\d{2}))?$/.exec( value );
+		m = /^(\d{4})-(\d{2})-(\d{2})(?:\s(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec( value );
 		if( !m ) {
 			return onZero;
 		}
-		var y, hourAndMinutes, seconds;
-		y = m[1].split( '-' );
-		hourAndMinutes = m[2].split( ':' );
-		seconds = m[3] || m[4] || 0;
-		return new Date( y[0], y[1]-1, y[2], hourAndMinutes[0], hourAndMinutes[1], seconds, 0 ).toJSON();
+		return +new Date( m[1], m[2]-1, m[3], m[4]|| 0, m[5] || 0, m[6] || 0, 0 );
 	},
 	
 	sanitizeObj: function( value, onZero ) {
@@ -1900,6 +1957,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_getAll: function( queryData ) {
 		var self = this,
+			schemaName = queryData.schema,
 			filterCallback = queryData.filterCallback,
 			filterFields = queryData.filterFields,
 			filterComparator = queryData.filterComparator,
@@ -1913,6 +1971,9 @@ MSQTA._ORM.IndexedDB = {
 			if( cursor ) {
 				record = cursor.value;
 				if( filterCallback( record, filterFields, filterComparator ) ) {
+					// our implementation of indexeddb store dates in milliseconds
+					// but the user needs to have access to a date obj
+					self._checkDateTypeFields( schemaName, record );
 					data.push( record );
 				}
 				cursor.continue();
@@ -1925,6 +1986,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_getWithRange: function( queryData ) {
 		var self = this,
+			schemaName = queryData.schema,
 			rangePk = queryData.rangePk,
 			rangeIndex = queryData.rangeIndex,
 			rangeKey = queryData.rangeKey,
@@ -1932,9 +1994,14 @@ MSQTA._ORM.IndexedDB = {
 			data = [];
 		
 		var grabRecords = function( e ) {
-			var cursor = this.result;
+			var cursor = this.result,
+				record;
 			if( cursor ) {
-				data.push( cursor.value );
+				record = cursor.value;
+				// our implementation of indexeddb store dates in milliseconds
+				// but the user needs to have access to a date obj
+				self._checkDateTypeFields( schemaName, record );
+				data.push( record );
 				cursor.continue();
 				
 			} else {
@@ -1947,6 +2014,18 @@ MSQTA._ORM.IndexedDB = {
 
 		} else {
 			objectStore.index( rangeIndex ).openCursor( rangeKey ).onsuccess = grabRecords;
+		}
+	},
+	
+	_checkDateTypeFields: function( schemaName, record ) {
+		var Schema = this._Schemas[schemaName],
+			schemaFields = Schema._schemaFields,
+			fieldName;
+		
+		for( fieldName in record ) {
+			if( schemaFields[fieldName].isDate ) {
+				record[fieldName] = new Date( record[fieldName] );
+			}
 		}
 	},
 /*********************/
@@ -2308,16 +2387,6 @@ MSQTA._Schema.IndexedDB = {
 			indexData.pk = fieldName;
 		} else {
 			indexData.index = fieldName;
-		}
-		
-		// if the field type is date, hence a date object, you can compare equally two date objects
-		// so, converting to a comparator of the type >= and <=
-		fieldValue = comparator['='];
-		if( fieldValue && fieldData.isDate ) {
-			comparator = {
-				'>=': fieldValue,
-				'<=': fieldValue
-			};
 		}
 		
 		for( operator in comparator ) {
@@ -2795,6 +2864,10 @@ MSQTA._ORM.WebSQL = {
 		
 			} else if( queryData.isInsert ) {
 				queryData.returnValue = results.insertId;
+				// only a one row has been inserted
+				if( !allIDs.length ) {
+					allIDs.push( results.insertId );
+				}
 				queryData.insertedIDs = allIDs;
 			
 			} else if( queryData.isDelete ) {

@@ -286,16 +286,6 @@ MSQTA._Schema.IndexedDB = {
 			indexData.index = fieldName;
 		}
 		
-		// if the field type is date, hence a date object, you can compare equally two date objects
-		// so, converting to a comparator of the type >= and <=
-		fieldValue = comparator['='];
-		if( fieldValue && fieldData.isDate ) {
-			comparator = {
-				'>=': fieldValue,
-				'<=': fieldValue
-			};
-		}
-		
 		for( operator in comparator ) {
 			if( !validOperators.test( operator ) ) {
 				MSQTA._Errors.getByIndexWithRange2( operator );

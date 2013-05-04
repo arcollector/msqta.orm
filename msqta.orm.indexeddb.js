@@ -1117,6 +1117,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_getAll: function( queryData ) {
 		var self = this,
+			schemaName = queryData.schema,
 			filterCallback = queryData.filterCallback,
 			filterFields = queryData.filterFields,
 			filterComparator = queryData.filterComparator,
@@ -1130,6 +1131,9 @@ MSQTA._ORM.IndexedDB = {
 			if( cursor ) {
 				record = cursor.value;
 				if( filterCallback( record, filterFields, filterComparator ) ) {
+					// our implementation of indexeddb store dates in milliseconds
+					// but the user needs to have access to a date obj
+					self._checkDateTypeFields( schemaName, record );
 					data.push( record );
 				}
 				cursor.continue();
@@ -1142,6 +1146,7 @@ MSQTA._ORM.IndexedDB = {
 	
 	_getWithRange: function( queryData ) {
 		var self = this,
+			schemaName = queryData.schema,
 			rangePk = queryData.rangePk,
 			rangeIndex = queryData.rangeIndex,
 			rangeKey = queryData.rangeKey,
@@ -1149,9 +1154,14 @@ MSQTA._ORM.IndexedDB = {
 			data = [];
 		
 		var grabRecords = function( e ) {
-			var cursor = this.result;
+			var cursor = this.result,
+				record;
 			if( cursor ) {
-				data.push( cursor.value );
+				record = cursor.value;
+				// our implementation of indexeddb store dates in milliseconds
+				// but the user needs to have access to a date obj
+				self._checkDateTypeFields( schemaName, record );
+				data.push( record );
 				cursor.continue();
 				
 			} else {
@@ -1164,6 +1174,18 @@ MSQTA._ORM.IndexedDB = {
 
 		} else {
 			objectStore.index( rangeIndex ).openCursor( rangeKey ).onsuccess = grabRecords;
+		}
+	},
+	
+	_checkDateTypeFields: function( schemaName, record ) {
+		var Schema = this._Schemas[schemaName],
+			schemaFields = Schema._schemaFields,
+			fieldName;
+		
+		for( fieldName in record ) {
+			if( schemaFields[fieldName].isDate ) {
+				record[fieldName] = new Date( record[fieldName] );
+			}
 		}
 	},
 /*********************/
