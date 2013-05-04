@@ -636,7 +636,7 @@ MSQTA._Helpers.IndexedDBSanitizers = {
 	sanitizeDatetime: function( value, onZero ) {
 		var m, d;
 		if( value instanceof Date ) {
-			return isNaN( value-0 ) ? +value : onZero;
+			return isNaN( value-0 ) ? onZero : +value;
 		}
 		if( (d=MSQTA._Helpers.tryMillisecondsDate( value )) ) {
 			return +d;
