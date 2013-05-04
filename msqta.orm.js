@@ -138,7 +138,9 @@ MSQTA._Helpers = {
 	},
 	
 	castDateTypeOf: function( value ) {
-		return new Date( value );
+		var d = new Date( value );
+		d.setMinutes( d.getMinutes() + d.getTimezoneOffset() );
+		return d;
 	},
 
 	castBoolean: function( value ) {
