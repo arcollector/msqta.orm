@@ -372,6 +372,7 @@ MSQTA._Schema.IndexedDB = {
 			datas = [ datas ];
 		}
 		
+		datas = MSQTA._Helpers.copyObject( datas );
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
 			for( k = 0; k < m; k++ ) {
@@ -420,6 +421,7 @@ MSQTA._Schema.IndexedDB = {
 			setDatas = [ setDatas ];
 		}
 		
+		setDatas = MSQTA._Helpers.copyObject( setDatas );
 		for( i = 0, l = setDatas.length; i < l; i++ ) {
 			setData = setDatas[i];
 			

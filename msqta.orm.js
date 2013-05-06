@@ -351,6 +351,10 @@ MSQTA._Helpers = {
 	
 	getUTCDateInMilliseconds: function( dateObj ) {
 		return Date.UTC( dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes(), dateObj.getSeconds(), 0 )
+	},
+	
+	copyObject: function( obj ) {
+		return JSON.parse( JSON.stringify( obj ) );
 	}
 };
 /***************************************/

@@ -351,6 +351,10 @@ MSQTA._Helpers = {
 	
 	getUTCDateInMilliseconds: function( dateObj ) {
 		return Date.UTC( dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes(), dateObj.getSeconds(), 0 )
+	},
+	
+	copyObject: function( obj ) {
+		return JSON.parse( JSON.stringify( obj ) );
 	}
 };
 /***************************************/
@@ -2371,6 +2375,7 @@ MSQTA._Schema.IndexedDB = {
 			datas = [ datas ];
 		}
 		
+		datas = MSQTA._Helpers.copyObject( datas );
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
 			for( k = 0; k < m; k++ ) {
@@ -2419,6 +2424,7 @@ MSQTA._Schema.IndexedDB = {
 			setDatas = [ setDatas ];
 		}
 		
+		setDatas = MSQTA._Helpers.copyObject( setDatas );
 		for( i = 0, l = setDatas.length; i < l; i++ ) {
 			setData = setDatas[i];
 			
