@@ -83,7 +83,7 @@ MSQTA._Errors = {
 /***************************************/
 /***************************************/
 MSQTA._Messages = {
-	'app is working': 'The application is currently manipulating your local database, please wait a moment, leaving the application right now will cause that your database may get broken!',
+	'app is working': 'The application is currently manipulating the database, please wait a moment, leaving the application right now will be cause that your database may get broken!',
 };
 /***************************************/
 /***************************************/
@@ -93,7 +93,7 @@ MSQTA._Helpers = {
 	
 	defaultCallback: function() {
 		console.log( 'MSQTA-ORM: default callback used' );
-		// is WebSQL
+		// is it WebSQL?
 		if( arguments[1] && arguments[1].rows ) {
 			var rows = arguments[1].rows, i = 0, l = rows.length;
 			for( ; i < l; i++ ) {
@@ -105,17 +105,16 @@ MSQTA._Helpers = {
 	},
 	
 	blockWindow: function() {
-		window.addEventListener( 'beforeunload', this.preLeaveWindow, false );
+		window.addEventListener( 'beforeunload', this.preLeaveWindow );
 	},
 	unblockWindow: function() {
-		window.removeEventListener( 'beforeunload', this.preLeaveWindow, false );
+		window.removeEventListener( 'beforeunload', this.preLeaveWindow );
 	},
 	/**
 	* @scope window [beforeunload]
 	*/
 	preLeaveWindow: function( e ) {
-		e.returnValue = MSQTA._Messages['app is working'];
-		return MSQTA._Messages['app is working'];
+		return ( e.returnValue = MSQTA._Messages['app is working'] );
 	},
 	
 	webSQLSize: 2 * 1024 * 1024,
@@ -262,9 +261,9 @@ MSQTA._Helpers = {
 		integer: 0,
 		object: '{}',
 		array: '[]',
-		date: '0000-00-00',
-		time: '00:00:00',
-		datetime: '0000-00-00 00:00:00',
+		date: -2209075200000,
+		time: -2209075200000,
+		datetime: -2209075200000,
 		float: 0,
 		boolean: 0
 	},
@@ -637,9 +636,9 @@ MSQTA._ORM = function( settings ) {
 	// used when multiple call to batch function are maded
 	this._batchsStack = [];
 
-	// this.Schema is the function that create schemas from
-	// this particulaty database, this.Schema._ORM is there
-	// reference to this instantice for each schema that is created
+	// this.Schema is the function/constructor that creates schemas from
+	// this current database, this.Schema._ORM holds the
+	// reference to this database.
 	this.Schema._ORM = this;
 
 	this._isBlocked = true;
@@ -686,7 +685,7 @@ MSQTA._Schema = function( ORM, schemaDefinition, options ) {
 	var pk = schemaDefinition.primaryKey;
 	// check if pk refers to a exisitnet colmun
 	if( !pk || ( pk && !schemaFields[pk] ) ) {
-		throw Error( 'MSQTA-ORM: primary key referes to a non-exisistent fieldName in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+		throw Error( 'MSQTA-ORM: primary key referes to a non-exisistent feld in the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	}
 	if( schemaFields[pk].type !== 'integer' ) {
 		throw Error( 'MSQTA-ORM: primary key must be of integer type on "' + schemaName + '" schema from the "' + databaseName + '" database!' );
