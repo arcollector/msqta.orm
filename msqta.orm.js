@@ -182,14 +182,14 @@ MSQTA._Helpers = {
 	},
 /***************************************/
 /***************************************/
-	getORMPrototype: function( prefered ) {
-		prefered = prefered.toLowerCase();
+	getORMPrototype: function( preferred ) {
+		preferred = preferred.toLowerCase();
 		
-		if( prefered === 'websql' ) {
+		if( preferred === 'websql' ) {
 			if( window.openDatabase ) {
 				return MSQTA._ORM.WebSQL;
 			}
-		} else if( prefered === 'indexeddb' ) {
+		} else if( preferred === 'indexeddb' ) {
 			if( MSQTA._IndexedDB ) {
 				return MSQTA._ORM.IndexedDB;
 			}
@@ -621,7 +621,7 @@ MSQTA.ORM = function( settings, callback, context ) {
 	settings.callback = settings.callback || callback || MSQTA._Helpers.defaultCallback;
 	settings.context = settings.context || context || window;
 	
-	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.prefered || '' );
+	MSQTA._ORM.prototype = MSQTA._Helpers.getORMPrototype( settings.preferred || settings.prefered || '' );
 	return new MSQTA._ORM( settings );
 };
 /***************************************/
