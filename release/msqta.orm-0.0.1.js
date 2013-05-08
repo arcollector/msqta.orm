@@ -249,9 +249,9 @@ MSQTA._Helpers = {
 		integer: 'INTEGER',
 		object: 'TEXT',
 		array: 'TEXT',
-		date: 'DATE',
-		time: 'TIME',
-		datetime: 'DATETIME',
+		date: 'INTEGER',
+		time: 'INTEGER',
+		datetime: 'INTEGER',
 		float: 'REAL',
 		boolean: 'INTEGER'
 	},
@@ -303,11 +303,11 @@ MSQTA._Helpers = {
 		// now reset the schema for a more easy usage
 		schemaFieldData = this._schemaFields[fieldName];
 		// used when no values are specified to this col
-		schemaFieldData.zero = allowNull ? ( implementation === 'webSQL' ? null : null ) : dataTypeZeros[type];
+		schemaFieldData.zero = allowNull ? null : dataTypeZeros[type];
 		// sanitizer function
 		schemaFieldData.sanitizer = implementation === 'webSQL' ? MSQTA._Helpers.WebSQLSanitizers.getSanitizer( type ) : MSQTA._Helpers.IndexedDBSanitizers.getSanitizer( type );
-		// need it is the abstract type is object, date, etc (on indexedDB implementation this not needed it)
-		
+		// this is needed because on both implementation these fields type are stores in integers (milliseconds)
+		// then when the user retrive a record with a data type field, we need to cast it to a date object
 		schemaFieldData.isDate = type === 'date' || type === 'time' || type === 'datetime';
 		
 		if( implementation === 'webSQL' ) {
