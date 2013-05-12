@@ -362,10 +362,10 @@ MSQTA._Schema.IndexedDB = {
 	put: function( datas, userCallback, userContext ) {
 		var ORM = this._ORM,
 			databaseName = ORM._name,
-			fields = this._fieldsName, fieldName,
+			fields = this._fieldsName, fieldName, t,
 			pk = this._primaryKey,
 			schemaName = this._name,
-			data, i, l, k, m = fields.length,
+			data, i, l,
 			queryData;
 		
 		if( !Array.isArray( datas ) && typeof datas === 'object' ) {
@@ -375,8 +375,10 @@ MSQTA._Schema.IndexedDB = {
 		datas = MSQTA._Helpers.copyObject( datas );
 		for( i = 0, l = datas.length; i < l; i++ ) {
 			data = datas[i];
-			for( k = 0; k < m; k++ ) {
-				fieldName = fields[k];
+			for( fieldName in data ) {
+				if( fields.indexOf( fieldName ) === -1 ) {
+					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
+				}
 				data[fieldName] = this._getValueBySchema( fieldName, data[fieldName] );
 			}
 			// lets the auto_increment works automatically if an id is not bee supplied

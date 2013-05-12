@@ -764,7 +764,7 @@ MSQTA._Schema.WebSQL = {
 			insertQueryValues = [], values,
 			insertQueryValuesTokens,
 			insertQueries = [],
-			data, i, l, k, m = fields.length,
+			data, i, l,
 			queryData;
 		
 		if( !Array.isArray( datas ) && typeof datas === 'object' ) {
@@ -776,8 +776,10 @@ MSQTA._Schema.WebSQL = {
 			insertQueryCols = [];
 			values = [];
 			insertQueryValuesTokens = [];
-			for( k = 0; k < m; k++ ) {
-				fieldName = fields[k];
+			for( fieldName in data ) {
+				if( fields.indexOf( fieldName ) === -1 ) {
+					MSQTA._Errors.put1( databaseName, schemaName, fieldName );
+				}
 				insertQueryCols.push( fieldName );
 				fieldValue = this._getValueBySchema( fieldName, data[fieldName] );
 				if( fieldName === pk &&

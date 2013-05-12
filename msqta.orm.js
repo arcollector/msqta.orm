@@ -46,6 +46,9 @@ MSQTA._Errors = {
 	getWithLike2: function( databaseName, schemaName, fieldName ) {
 		throw Error( 'MSQTA-ORM: getWithLike: unknown "' + fieldName + '" column on the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
 	},
+	put1: function( databaseName, schemaName, fieldName ) {
+		throw Error( 'MSQTA-ORM: put: "' + fieldName + '" field refers to a non-existent field for the "' + schemaName + '" schema from the "' + databaseName + '" database!' );
+	},
 	set1: function( databaseName, schemaName, setDatas ) {
 		throw Error( 'MSQTA-ORM: set: data param is invalid for the "' + schemaName + '" schema from the "' + databaseName + '" database!', setDatas );
 	},
