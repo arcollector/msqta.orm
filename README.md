@@ -1,6 +1,6 @@
 MSQTA.ORM
 =========
-IndexedDB-WebSQL abstract layer ORM.
+IndexedDB-WebSQL abstraction API.
 
 License
 ----------
